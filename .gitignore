@@ -39,7 +39,3 @@ models/
 
 # Hugging Face Datasets Cache (often large arrow files)
 ~/.cache/huggingface/
-
-baseline_code.ipynb
-README.md
-requirements.txt
