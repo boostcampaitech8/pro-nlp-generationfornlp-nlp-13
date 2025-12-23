@@ -22,6 +22,21 @@ def parse_args():
         action="store_true",
         help="If set, train on inferential (5-choice) problems. Otherwise, train on knowledge (4-choice) problems"
     )
+    parser.add_argument(
+        "--hf_dataset_with_4choices",
+        default="yhkimmy/4_choices",
+        help="Hugging Face dataset name for 4-choice"
+    )
+    parser.add_argument(
+        "--hf_dataset_with_5choices",
+        default="yhkimmy/5_choices",
+        help="Hugging Face dataset name for 5-choice"
+    )
+    parser.add_argument(
+        "--hf_token",
+        default="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",
+        help="Hugging Face token for pushing datasets"
+    )
     
     # Model arguments
     parser.add_argument(
