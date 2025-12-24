@@ -31,7 +31,7 @@ checkpoint
 *.tar.gz
 
 # Models
-/models/
+result/
 *.bin
 *.pt
 *.index
