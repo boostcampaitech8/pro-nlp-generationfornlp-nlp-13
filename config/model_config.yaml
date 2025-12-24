@@ -1,6 +1,6 @@
 model:
   # 4지선다(지식형) 특화 설정
-  knowledge_model:
+  knowledge:
     base_model: "beomi/gemma-ko-2b"
     torch_dtype: "float16"
     device_map: "auto"
