@@ -1,0 +1,22 @@
+project:
+  name: "dual-model-inference"
+  seed: 42
+
+paths:
+  test_data: "data/test.csv"        # 테스트 데이터 경로
+  output: "output.csv"              # 결과 저장 경로
+
+models:
+  # 5지선다용 (추론형) 모델
+  inferential:
+    checkpoint_path: "inferential/checkpoint1" # 실제 체크포인트 경로 입력
+    name: "inferential_model"
+  
+  # 4지선다용 (지식형) 모델
+  knowledge:
+    checkpoint_path: "knowledge/checkpoint2"   # 실제 체크포인트 경로 입력
+    name: "knowledge_model"
+
+hardware:
+  device_map: "auto"
+  torch_dtype: "float16" # or "bfloat16" (A100/H100 사용 시 bfloat16 추천)
