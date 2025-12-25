@@ -19,7 +19,7 @@ venv/
 baseline_code/
 
 # Data (원본/중간 산출물)
-data/
+/data/
 
 # Training outputs / logs
 outputs/
@@ -31,7 +31,7 @@ checkpoint
 *.tar.gz
 
 # Models
-models/
+result/
 *.bin
 *.pt
 *.index
@@ -39,3 +39,6 @@ models/
 
 # Hugging Face Datasets Cache (often large arrow files)
 ~/.cache/huggingface/
+
+# output.csv
+output.csv
