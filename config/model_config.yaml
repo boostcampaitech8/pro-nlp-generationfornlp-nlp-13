@@ -1,13 +1,13 @@
 model:
   # 4지선다(지식형) 특화 설정
   knowledge:
-    base_model: "beomi/gemma-ko-2b"
+    model_name: "Qwen/Qwen3-8B"
     torch_dtype: "float16"
     device_map: "auto"
 
   # 5지선다(독해형) 특화 설정
   inferential:
-    base_model: "beomi/gemma-ko-2b"
+    model_name: "Qwen/Qwen3-8B"
     torch_dtype: "float16"
     device_map: "auto"
   

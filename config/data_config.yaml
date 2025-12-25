@@ -7,12 +7,6 @@ data:
   max_token_length: 1024
   test_size: 0.1
   
-  # 토크나이저
-  tokenizer:
-    model_name: "beomi/gemma-ko-2b"
-    padding_side: "right"
-    num_proc: 4
-  
   # 데이터 증강
   augmentation:
   

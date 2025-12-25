@@ -6,12 +6,14 @@ training:
     max_seq_length: 1024
     lr_scheduler_type: "cosine"
     weight_decay: 0.01
-    logging_steps: 1
+    logging_steps: 100
     save_strategy: "epoch"
     eval_strategy: "epoch"
-    save_total_limit: 2
+    save_total_limit: 1
     save_only_model: true
     report_to: "none"
+    metric_for_best_model: "f1"
+    greater_is_better: true
   
   # 4지선다(지식형) 학습 설정
   knowledge:

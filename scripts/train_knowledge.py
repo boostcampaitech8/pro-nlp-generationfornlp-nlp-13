@@ -14,7 +14,12 @@ from src.training.metrics import get_preprocess_logits_for_metrics, get_compute_
 from src.training.base_trainer import BaseSFTTrainer
 
 def load_configs():
-    """YAML 파일들을 로드하여 딕셔너리로 반환"""
+    """
+    데이터, 모델, 훈련 설정이 포함된 YAML 파일들을 로드합니다.
+    
+    Returns:
+        data_cfg, model_cfg, train_cfg 설정을 담은 튜플
+    """
     with open("config/data_config.yaml", "r") as f:
         data_cfg = yaml.safe_load(f)
     with open("config/model_config.yaml", "r") as f:
@@ -24,11 +29,13 @@ def load_configs():
     return data_cfg, model_cfg, train_cfg
 
 def main():
-    # 설정 로드
+    """
+    지식형(4지선다) 모델을 위한 데이터 로딩, 토크나이징 및 SFT 학습 전과정을 실행합니다.
+    """
+    # 1. 설정 로드
     data_cfg, model_cfg, train_cfg = load_configs()
     
-    # 데이터 로딩 및 분류
-    # data_config.yaml의 train_csv 경로 사용
+    # 2. 데이터 로딩 및 분류 (4지선다 추출)
     loader = DataLoader(data_cfg['data']['train_csv'])
     df = loader.load_and_flatten()
     
@@ -37,24 +44,21 @@ def main():
     
     print(f"4지선다(지식형) 데이터: {len(knowledge_df)}개")
     
-    # 프롬프트 생성 및 Dataset 변환
+    # 3. 프롬프트 생성 및 Dataset 변환
     prompt_formatter = PromptFormatter()
     processor = DatasetProcessor(prompt_formatter)
     knowledge_dataset = processor.process(knowledge_df)
     
-    # 토크나이저 로드 (data_config.yaml 기반)
-    tokenizer_info = data_cfg['data']['tokenizer']
+    # 4. 토크나이저 로드 (knowledge 모델 전용 설정)
+    k_model_cfg = model_cfg['model']['knowledge']
     tokenizer_wrapper = TokenizerWrapper(
-        model_name=tokenizer_info['model_name'],
+        model_name=k_model_cfg['model_name']
     )
-
-    tokenizer_wrapper.tokenizer.chat_template = "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{% endif %}{% if system_message is defined %}{{ system_message }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<start_of_turn>user\n' + content + '<end_of_turn>\n<start_of_turn>model\n' }}{% elif message['role'] == 'assistant' %}{{ content + '<end_of_turn>\n' }}{% endif %}{% endfor %}"
-    tokenizer_wrapper.tokenizer.chat_template = "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{% endif %}{% if system_message is defined %}{{ system_message }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<start_of_turn>user\n' + content + '<end_of_turn>\n<start_of_turn>model\n' }}{% elif message['role'] == 'assistant' %}{{ content + '<end_of_turn>\n' }}{% endif %}{% endfor %}"
     
-    
-    # 필터링 및 분할 (data_config.yaml 기반)
+    # 5. 데이터 필터링 및 분할
     tokenized_dataset = tokenizer_wrapper.tokenize_dataset(knowledge_dataset)
     
+    # 길이 제한 필터링 및 훈련/검증 데이터 분할
     tokenized_dataset = tokenized_dataset.filter(lambda x: len(x["input_ids"]) <= data_cfg['data']['max_token_length'])  
     tokenized_dataset = tokenized_dataset.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
 
@@ -63,28 +67,22 @@ def main():
     
     print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
     
-    # 모델 로딩 (model_config.yaml 기반)
-    k_model_cfg = model_cfg['model']['knowledge']
+    # 6. 모델 및 LoRA 설정 로딩
     model = ModelLoader.load_model(
-        model_name=k_model_cfg['base_model'],
+        model_name=k_model_cfg['model_name'],
         torch_dtype=k_model_cfg['torch_dtype'],
         device_map=k_model_cfg['device_map']
     )
     
-    # LoRA Config (model_config.yaml의 lora.knowledge 세션 기반)
     lora_params = model_cfg['lora']['knowledge']
-    peft_config = LoraConfigFactory.create_default_config()
+    peft_config = LoraConfigFactory.create_default_config(**lora_params)
     
-    # Data Collator
+    # 7. Data Collator (Instruction 부분 마스킹)
     data_collator = CollatorFactory.create_completion_only_collator(
         tokenizer_wrapper.tokenizer
     )
     
-    # Trainer 생성 및 학습 (training_config.yaml의 common + knowledge 조합)
-    common_cfg = train_cfg['training']['common']
-    knowledge_cfg = train_cfg['training']['knowledge']
-
-     # Trainer 생성 
+    # 8. Trainer 생성 및 학습 시작
     trainer = BaseSFTTrainer(
         model=model,
         tokenizer=tokenizer_wrapper.tokenizer,
