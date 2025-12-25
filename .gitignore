@@ -39,3 +39,6 @@ result/
 
 # Hugging Face Datasets Cache (often large arrow files)
 ~/.cache/huggingface/
+
+# output.csv
+output.csv
