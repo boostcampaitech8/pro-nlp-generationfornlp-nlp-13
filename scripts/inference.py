@@ -11,143 +11,81 @@ from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from src.models.dual_model import DualModel
-from src.data.classifier import ChoiceClassifier
+from src.data.data_loader import DataLoader 
+from src.data.classifier import QuestionClassifier
+from src.data.prompt_formatter import PromptFormatter
+from src.data.dataset_processor import DatasetProcessor
+from src.data.tokenizer_wrapper import TokenizerWrapper
+from src.data.collator import CollatorFactory
+from src.models.model_loader import ModelLoader
+from src.models.lora_config import LoraConfigFactory
+from src.training.metrics import get_preprocess_logits_for_metrics, get_compute_metrics
+from src.training.base_trainer import BaseSFTTrainer
 
-# --- Config 로더 ---
-def load_config(config_path):
-    with open(config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
 
-# --- Torch Dtype 매핑 ---
-def get_torch_dtype(dtype_str):
-    if dtype_str == "bfloat16":
-        return torch.bfloat16
-    elif dtype_str == "float16":
-        return torch.float16
-    else:
-        return torch.float32
+def load_configs():
+    """
+    config 디렉토리의 YAML 파일들을 로드하여 설정 정보들을 반환합니다.
+    
+    Returns:
+        data_cfg, model_cfg, inference_cfg 설정을 담은 튜플
+    """
+    with open("config/data_config.yaml", "r") as f:
+        data_cfg = yaml.safe_load(f)
+    with open("config/model_config.yaml", "r") as f:
+        model_cfg = yaml.safe_load(f)
+    with open("config/inference_config.yaml", "r") as f:
+        inference_cfg = yaml.safe_load(f)
+    return data_cfg, model_cfg, inference_cfg
 
-# --- 프롬프트 템플릿 (변경 없음) ---
-PROMPT_QUESTION_PLUS = """지문:
-{paragraph}
-
-질문:
-{question}
-
-<보기>:
-{question_plus}
-
-선택지:
-{choices}
-
-1, 2, 3, 4, 5 중에 하나를 정답으로 고르세요."""
-
-PROMPT_NO_QUESTION_PLUS = """지문:
-{paragraph}
-
-질문:
-{question}
-
-선택지:
-{choices}
-
-1, 2, 3, 4, 5 중에 하나를 정답으로 고르세요."""
 
 def main():
+    """
+    전체 추론 파이프라인(설정 로드, 모델 초기화, 데이터 처리, 추론, 저장)을 실행합니다.
+    """
     # 1. Config 로드
-    config_path = os.path.join("config", "inference_config.yaml")
-    cfg = load_config(config_path)
-    
-    print(f">>> Configuration Loaded: {cfg['project']['name']}")
-    
-    # 하드웨어 설정
-    device_map = cfg['hardware']['device_map']
-    torch_dtype = get_torch_dtype(cfg['hardware']['torch_dtype'])
+    data_cfg, model_cfg, inference_cfg = load_configs()
     
     # 2. Dual Model 초기화
     print(">>> Loading Dual Models...")
     dual_model = DualModel(
-        inferential_ckpt=cfg['models']['inferential']['checkpoint_path'],
-        knowledge_ckpt=cfg['models']['knowledge']['checkpoint_path'],
-        device_map=device_map
-        # 참고: torch_dtype 전달이 필요하다면 DualModel 및 하위 클래스 __init__ 수정 필요
-        # 현재는 기본적으로 모델 내부에서 처리하거나 config를 전달하도록 수정 가능
+        inferential_ckpt=inference_cfg['models']['inferential']['checkpoint_path'],
+        knowledge_ckpt=inference_cfg['models']['knowledge']['checkpoint_path'],
+        device_map='auto'
     )
 
     # 3. 데이터 로드 및 전처리
-    test_data_path = cfg['paths']['test_data']
-    print(f">>> Loading Test Data from {test_data_path}...")
-    test_df = pd.read_csv(test_data_path)
-    
-    dataset_records = []
-    classifier = ChoiceClassifier()
-    
-    for _, row in test_df.iterrows():
-        problems = literal_eval(row['problems'])
-        choices = problems['choices']
-        
-        # Classifier를 이용해 선지 개수 파악 (4지 vs 5지)
-        len_choices = classifier.get_choice_count(choices)
-        
-        choices_string = "\n".join([f"{idx + 1} - {c}" for idx, c in enumerate(choices)])
-        
-        question_plus = problems.get('question_plus', None)
-        if question_plus:
-            user_message = PROMPT_QUESTION_PLUS.format(
-                paragraph=row['paragraph'],
-                question=problems['question'],
-                question_plus=question_plus,
-                choices=choices_string,
-            )
-        else:
-            user_message = PROMPT_NO_QUESTION_PLUS.format(
-                paragraph=row['paragraph'],
-                question=problems['question'],
-                choices=choices_string,
-            )
+    loader = DataLoader(data_cfg['data']['test_csv'])
+    test_df = loader.load_and_flatten()
 
-        dataset_records.append({
-            "id": row["id"],
-            "messages": [
-                {"role": "system", "content": "지문을 읽고 질문의 답을 구하세요."},
-                {"role": "user", "content": user_message},
-            ],
-            "len_choices": len_choices
-        })
+    print(f"테스트 데이터: {len(test_df)}개")
+
+    # 프롬프트 생성 및 Dataset 변환
+    prompt_formatter = PromptFormatter()
+    processor = DatasetProcessor(prompt_formatter)
+    test_dataset = processor.process(test_df, is_test=True)
 
     # 4. 추론 실행
-    print(">>> Starting Inference...")
+    print(">>> 추론 시작!")
     infer_results = []
     pred_choices_map = {0: "1", 1: "2", 2: "3", 3: "4", 4: "5"}
     
-    for data in tqdm(dataset_records):
+    for data in tqdm(test_dataset):
         _id = data["id"]
         messages = data["messages"]
         len_choices = data["len_choices"]
         
         # DualModel 라우팅 및 추론
-        logits, tokenizer = dual_model.predict(messages, len_choices)
-        
-        # Logits -> Probability 변환
-        target_logit_list = [logits[tokenizer.vocab[str(i + 1)]] for i in range(len_choices)]
-        probs = (
-            torch.nn.functional.softmax(
-                torch.tensor(target_logit_list, dtype=torch.float32), 
-                dim=0
-            )
-            .detach()
-            .cpu()
-            .numpy()
-        )
+        probs = dual_model.predict(messages, len_choices)
         
         predict_value = pred_choices_map[np.argmax(probs, axis=-1)]
         infer_results.append({"id": _id, "answer": predict_value})
 
     # 5. 결과 저장
-    output_path = cfg['paths']['output']
-    print(f">>> Saving results to {output_path}")
+    output_path = inference_cfg['paths']['output']
     pd.DataFrame(infer_results).to_csv(output_path, index=False)
-    print("Done!")
+    print(f">>> 결과 저장 완료! : {output_path}")
+
 
 if __name__ == "__main__":
     main()
