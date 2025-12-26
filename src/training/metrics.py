@@ -3,6 +3,8 @@ import torch
 import evaluate
 import re
 
+DIGIT_IDS = [16, 17, 18, 19, 20]  # '1'~'5'
+
 def get_preprocess_logits_for_metrics(tokenizer):
     """
     평가 과정에서 메모리 효율을 위해 로짓 중 정답 후보 토큰에 해당하는 값만 추출하는 함수를 생성합니다.
@@ -13,22 +15,41 @@ def get_preprocess_logits_for_metrics(tokenizer):
     Returns:
         필요한 로짓만 필터링하여 반환하는 preprocess_logits_for_metrics 함수
     """
-    def preprocess_logits_for_metrics(logits, labels):
+    def preprocess_logits_for_metrics(logits, labels, pos_from_tail=4):
         """
-        Args:
-            logits: 모델의 전체 출력 로짓
-            labels: 정답 레이블
-            
-        Returns:
-            마지막 정답 예측 시점(-2 토큰)의 후보군("1"~"5") 로짓값
+        반환: (batch, 5)  -> '1'~'5'에 해당하는 logits만 뽑아서 metrics 단계로 전달
         """
-        logits = logits if not isinstance(logits, tuple) else logits[0]
-        # 후보 토큰들("1", "2", "3", "4", "5")의 인덱스 리스트
-        logit_idx = [tokenizer.vocab["1"], tokenizer.vocab["2"], tokenizer.vocab["3"], tokenizer.vocab["4"], tokenizer.vocab["5"]]
-        
-        # -2: answer token 시점, -1: eos token 시점 (모델 출력 구조에 따름)
-        logits = logits[:, -2, logit_idx]
-        return logits
+        # Trainer가 (logits, ...) 튜플을 줄 때가 있어서 정리
+        if isinstance(logits, tuple):
+            logits = logits[0]  # (B, L, V)
+
+        # labels: (B, L), pad/무시 영역은 -100일 가능성이 큼
+        # real_len = 마지막으로 labels != -100 인 위치 + 1 로 복원
+        labels_t = torch.as_tensor(labels)
+        not_ignored = (labels_t != -100)
+
+        # 샘플별로 마지막 not_ignored 위치 찾기
+        # (뒤에서부터 True 찾기)
+        rev = torch.flip(not_ignored, dims=[1])
+        last_true_from_end = torch.argmax(rev.int(), dim=1)          # (B,)
+        has_any = not_ignored.any(dim=1)                             # (B,)
+        # real_len = seq_len - last_true_from_end
+        seq_len = labels_t.size(1)
+        real_len = seq_len - last_true_from_end
+
+        # 만약 labels가 전부 -100인 샘플이 있으면(비정상) 그냥 seq_len로 처리
+        real_len = torch.where(has_any, real_len, torch.full_like(real_len, seq_len))
+
+        pos = (real_len - pos_from_tail).clamp(min=0, max=seq_len-1) # (B,)
+
+        # (B, V)로 해당 위치의 logits만 gather
+        logits_t = torch.as_tensor(logits)                           # (B, L, V)
+        batch_idx = torch.arange(logits_t.size(0), device=logits_t.device)
+        picked = logits_t[batch_idx, pos, :]                         # (B, V)
+
+        # digit ids만 슬라이스 -> (B, 5)
+        picked_digits = picked[:, DIGIT_IDS]
+        return picked_digits
     
     return preprocess_logits_for_metrics
 
@@ -49,31 +70,58 @@ def get_compute_metrics(tokenizer):
     # 텍스트 형태의 정답을 숫자 인덱스로 변환하는 맵
     int_output_map = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4}
 
-    def compute_metrics(evaluation_result):
+    def compute_metrics(eval_pred, label_pos_from_tail=3):
         """
-        Args:
-            evaluation_result: (필터링된 logits, labels) 튜플
-            
-        Returns:
-            {'f1': 스코어} 형태의 평가 결과 딕셔너리
+        eval_pred:
+        - (predictions, label_ids) 튜플 형태가 가장 흔함
+        - predictions: preprocess_logits_for_metrics가 반환한 (B, 5)
+        - label_ids: (B, L) with -100 ignored
+        반환: {"accuracy": ..., "macro_f1": ...}
         """
-        logits, labels = evaluation_result
+        if hasattr(eval_pred, "predictions"):
+            preds, labels = eval_pred.predictions, eval_pred.label_ids
+        else:
+            preds, labels = eval_pred
 
-        # 1. 레이블 데이터 전처리: padding 제거 및 텍스트 디코딩
-        labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-        labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+        preds_t = torch.as_tensor(preds)
+        pred_cls = torch.argmax(preds_t, dim=-1).cpu().numpy().astype(np.int64)  # (B,)
+
+        labels_t = torch.as_tensor(labels)
+
+        not_ignored = (labels_t != -100)
+        rev = torch.flip(not_ignored, dims=[1])
+        last_true_from_end = torch.argmax(rev.int(), dim=1)
+        has_any = not_ignored.any(dim=1)
+
+        seq_len = labels_t.size(1)
+        real_len = seq_len - last_true_from_end
+        real_len = torch.where(has_any, real_len, torch.full_like(real_len, seq_len))
+
+        pos_label = (real_len - label_pos_from_tail).clamp(min=0, max=seq_len - 1)
+        batch_idx = torch.arange(labels_t.size(0), device=labels_t.device)
+        gold_tok = labels_t[batch_idx, pos_label].cpu().numpy().astype(np.int64) 
+
+        gold_cls = gold_tok - DIGIT_IDS[0]  
+
+        valid = (gold_cls >= 0) & (gold_cls < 5)
+        pred_cls = pred_cls[valid]
+        gold_cls = gold_cls[valid]
+
+        acc = (pred_cls == gold_cls).mean() if len(gold_cls) > 0 else 0.0
+
+        f1s = []
+        for c in range(5):
+            tp = np.sum((pred_cls == c) & (gold_cls == c))
+            fp = np.sum((pred_cls == c) & (gold_cls != c))
+            fn = np.sum((pred_cls != c) & (gold_cls == c))
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall    = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            f1        = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+            f1s.append(f1)
+
+        macro_f1 = float(np.mean(f1s)) if len(f1s) > 0 else 0.0
+
+        return {"accuracy": float(acc), "f1": macro_f1}
         
-        # Qwen3 등의 thinking 모델 대응: <think> 태그 제거 후 실제 정답 텍스트만 추출
-        labels = list(map(lambda x: x.split("</think>")[-1].strip(), labels))
-        labels = list(map(lambda x: int_output_map[x], labels))
-
-        # 2. 로짓 데이터를 확률 분포로 변환 및 최대값 선택
-        probs = torch.nn.functional.softmax(torch.tensor(logits), dim=-1)
-        predictions = np.argmax(probs, axis=-1)
-
-        # 3. Macro F1-score 계산
-        f1 = f1_metric.compute(predictions=predictions, references=labels, average='macro')
-
-        return f1
-    
     return compute_metrics
