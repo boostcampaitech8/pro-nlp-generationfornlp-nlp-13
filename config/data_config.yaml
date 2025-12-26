@@ -4,7 +4,7 @@ data:
   test_csv: "/data/ephemeral/pro-nlp-generationfornlp-nlp-13/data/test.csv"
   
   # 전처리
-  max_token_length: 1024
+  max_token_length: 2048
   test_size: 0.1
   
   # 데이터 증강

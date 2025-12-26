@@ -4,37 +4,49 @@ model:
     model_name: "Qwen/Qwen3-8B"
     torch_dtype: "float16"
     device_map: "auto"
+    is_quantization: true
 
   # 5지선다(독해형) 특화 설정
   inferential:
     model_name: "Qwen/Qwen3-8B"
     torch_dtype: "float16"
     device_map: "auto"
+    is_quantization: true
+
   
 lora:
   # 공통 설정
   default:
-    r: 6
-    lora_alpha: 8
+    r: 16
+    lora_alpha: 32
     lora_dropout: 0.05
-    target_modules: ["q_proj", "k_proj"]
+    target_modules: [
+      "q_proj", "k_proj", "v_proj", "o_proj",
+      "gate_proj", "up_proj", "down_proj"
+    ]
     bias: "none"
     task_type: "CAUSAL_LM"
   
   # 4지선다(지식형) 특화 설정
   knowledge:
-    r: 6
-    lora_alpha: 8
+    r: 16
+    lora_alpha: 32
     lora_dropout: 0.05
-    target_modules: ["q_proj", "k_proj"]
+    target_modules: [
+      "q_proj", "k_proj", "v_proj", "o_proj",
+      "gate_proj", "up_proj", "down_proj"
+    ]
     bias: "none"
     task_type: "CAUSAL_LM"
   
   # 5지선다(독해형) 특화 설정
   inferential:
-    r: 6
-    lora_alpha: 8
+    r: 16
+    lora_alpha: 32
     lora_dropout: 0.05
-    target_modules: ["q_proj", "k_proj"]
+    target_modules: [
+      "q_proj", "k_proj", "v_proj", "o_proj",
+      "gate_proj", "up_proj", "down_proj"
+    ]
     bias: "none"
     task_type: "CAUSAL_LM"
