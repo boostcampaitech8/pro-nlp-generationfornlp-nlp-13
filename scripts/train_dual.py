@@ -50,14 +50,19 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
     tokenized = tokenizer_wrapper.tokenize_dataset(dataset)
     tokenized = tokenized.filter(lambda x: len(x["input_ids"]) <= data_cfg['data']['max_token_length'])
     split_data = tokenized.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
+    train_dataset, eval_dataset = split_data["train"], split_data["test"]
 
     # 2. 모델 및 설정 로드
     model = ModelLoader.load_model(
         model_name=m_cfg['model_name'],
         torch_dtype=m_cfg['torch_dtype'],
-        device_map=m_cfg['device_map']
+        device_map=m_cfg['device_map'],
+        is_quantization=m_cfg['is_quantization']
     )
 
+    model.config.use_cache = False
+    model.gradient_checkpointing_enable()
+    
     # LoRA Config (model_config.yaml의 lora 세션 기반)
     lora_params = model_cfg['lora'][model_type]
     peft_config = LoraConfigFactory.create_default_config(**lora_params)
@@ -68,8 +73,8 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
     trainer = BaseSFTTrainer(
         model=model,
         tokenizer=tokenizer_wrapper.tokenizer,
-        train_dataset=split_data['train'],
-        eval_dataset=split_data['test'],
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         data_collator=data_collator,
         peft_config=peft_config,
         compute_metrics=get_compute_metrics(tokenizer_wrapper.tokenizer),
