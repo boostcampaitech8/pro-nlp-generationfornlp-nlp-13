@@ -17,8 +17,8 @@ class DualModel:
             device_map: 모델이 로드될 장치 설정 (기본값: "auto")
         """
         # 두 모델을 메모리에 로드 (VRAM 용량에 주의가 필요합니다)
-        self.inferential = InferentialModel(inferential_ckpt, device_map=device_map)
         self.knowledge = KnowledgeModel(knowledge_ckpt, device_map=device_map)
+        self.inferential = InferentialModel(inferential_ckpt, device_map=device_map)
 
     def predict(self, messages, len_choices, device="cuda"):
         """
