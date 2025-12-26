@@ -14,16 +14,6 @@ class TokenizerWrapper:
             model_name: 로드할 모델의 이름 또는 경로
         """
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self._setup_tokenizer()
-    
-    def _setup_tokenizer(self):
-        """
-        토크나이저의 PAD 토큰 설정 및 패딩 방향 등 초기 설정을 수행합니다.
-        """
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-        self.tokenizer.padding_side = 'right'
-    
 
     def formatting_prompts_func(self, example):
         """
@@ -42,7 +32,7 @@ class TokenizerWrapper:
                 self.tokenizer.apply_chat_template(
                     example["messages"][i],
                     tokenize=False,
-                    enable_thinking=False,  # 핵심: thinking 모드 비활성화
+                    # enable_thinking=False,  # 핵심: thinking 모드 비활성화
                 )
             )
         return output_texts

@@ -9,7 +9,7 @@ class CollatorFactory:
     @staticmethod
     def create_completion_only_collator(
         tokenizer: PreTrainedTokenizer,
-        response_template = "<|im_start|>assistant"
+        response_template = "<|im_start|>assistant\n"
     ):
         """
         Assistant 응답 부분만 학습하는 DataCollatorForCompletionOnlyLM을 생성합니다.

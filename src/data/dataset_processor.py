@@ -29,18 +29,19 @@ class DatasetProcessor:
         processed_data = []
         
         for _, row in df.iterrows():
-            user_message = self.prompt_formatter.create_prompt(row.to_dict())
+            system_message = self.prompt_formatter.create_system_prompt(row.to_dict())
+            user_message = self.prompt_formatter.create_user_prompt(row.to_dict())
             
             processed_data.append({
                 "id": row["id"],
                 "messages": [
-                    {"role": "system", "content": "지문을 읽고 질문의 답을 구하세요."},
+                    {"role": "system", "content": system_message},
                     {"role": "user", "content": user_message},
                     {"role": "assistant", "content": f"{row['answer']}"}
                 ],
                 "label": row["answer"],
             })
-        
+            
         return processed_data
     
     def to_test_format(self, df: pd.DataFrame) -> List[Dict]:
@@ -55,18 +56,18 @@ class DatasetProcessor:
         """
         processed_data = []
         for _, row in df.iterrows():
-            user_message = self.prompt_formatter.create_prompt(row.to_dict())
+            system_message = self.prompt_formatter.create_system_prompt(row.to_dict())
+            user_message = self.prompt_formatter.create_user_prompt(row.to_dict())
             # choices 컬럼이 있다면 길이를 계산 (없으면 기본값 설정)
             len_choices = len(row["choices"]) if "choices" in row else 0
             
             processed_data.append({
                 "id": row["id"],
                 "messages": [
-                    {"role": "system", "content": "지문을 읽고 질문의 답을 구하세요."},
+                    {"role": "system", "content": system_message},
                     {"role": "user", "content": user_message},
                 ],
-                "label": row["answer"],
-                "len_choices": len_choices,
+                "question_type": row['question_type']
             })
         return processed_data
     
