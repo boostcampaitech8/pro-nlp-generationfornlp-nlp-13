@@ -18,6 +18,7 @@ class PromptFormatter:
         "당신의 외부 배경지식을 배제하고, 철저하게 지문에 명시된 내용에 근거하여 판단하십시오.\n\n"
     )
     
+    # 4지선다 + <보기> 있음
     USER_PROMPT_PLUS_4_V1 = """### 지문
 {paragraph}
 
@@ -101,6 +102,7 @@ class PromptFormatter:
 
 정답은 1~5 중 하나의 정수로만 출력하세요. 다른 글자는 출력하지 마세요.
 정답:"""
+
 
     @staticmethod
     def format_choices(choices: List[str]) -> str:

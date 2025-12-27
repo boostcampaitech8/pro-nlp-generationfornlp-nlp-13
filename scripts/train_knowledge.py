@@ -44,30 +44,25 @@ def main():
     
     print(f"4지선다(지식형) 데이터: {len(knowledge_df)}개")
     
-    # 3. 프롬프트 생성 및 Dataset 변환
+    # 3. 데이터 전처리 (Prompt -> Tokenize -> Split)
     prompt_formatter = PromptFormatter()
     processor = DatasetProcessor(prompt_formatter)
     knowledge_dataset = processor.process(knowledge_df)
     
-    # 4. 토크나이저 로드 (knowledge 모델 전용 설정)
     k_model_cfg = model_cfg['model']['knowledge']
     tokenizer_wrapper = TokenizerWrapper(
         model_name=k_model_cfg['model_name']
     )
     
-    # 5. 데이터 필터링 및 분할
     tokenized_dataset = tokenizer_wrapper.tokenize_dataset(knowledge_dataset)
-    
-    # 길이 제한 필터링 및 훈련/검증 데이터 분할
     tokenized_dataset = tokenized_dataset.filter(lambda x: len(x["input_ids"]) <= data_cfg['data']['max_token_length'])  
-    tokenized_dataset = tokenized_dataset.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
-
-    train_dataset = tokenized_dataset['train']
-    eval_dataset = tokenized_dataset['test']
+    
+    split_data = tokenized_dataset.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
+    train_dataset, eval_dataset = split_data["train"], split_data["test"]
     
     print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
     
-    # 6. 모델 및 LoRA 설정 로딩
+    # 4. 모델 및 LoRA 설정 로딩
     model = ModelLoader.load_model(
         model_name=k_model_cfg['model_name'],
         torch_dtype=k_model_cfg['torch_dtype'],
@@ -77,12 +72,12 @@ def main():
     lora_params = model_cfg['lora']['knowledge']
     peft_config = LoraConfigFactory.create_default_config(**lora_params)
     
-    # 7. Data Collator (Instruction 부분 마스킹)
+    # 5. Data Collator (Instruction 부분 마스킹)
     data_collator = CollatorFactory.create_completion_only_collator(
         tokenizer_wrapper.tokenizer
     )
     
-    # 8. Trainer 생성 및 학습 시작
+    # 6. Trainer 생성 및 학습 시작
     trainer = BaseSFTTrainer(
         model=model,
         tokenizer=tokenizer_wrapper.tokenizer,

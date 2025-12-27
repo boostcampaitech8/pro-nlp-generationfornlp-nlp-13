@@ -27,12 +27,10 @@ class TokenizerWrapper:
         """
         output_texts = []
         for i in range(len(example["messages"])):
-            # Qwen3 모델의 경우 enable_thinking=False 설정하여 <think> 태그 제거
             output_texts.append(
                 self.tokenizer.apply_chat_template(
                     example["messages"][i],
                     tokenize=False,
-                    # enable_thinking=False,  # 핵심: thinking 모드 비활성화
                 )
             )
         return output_texts

@@ -47,10 +47,11 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
         model_name=m_cfg['model_name']
     )
     
-    tokenized = tokenizer_wrapper.tokenize_dataset(dataset)
-    tokenized = tokenized.filter(lambda x: len(x["input_ids"]) <= data_cfg['data']['max_token_length'])
-    split_data = tokenized.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
+    tokenized_dataset = tokenizer_wrapper.tokenize_dataset(dataset)
+    tokenized_dataset = tokenized_dataset.filter(lambda x: len(x["input_ids"]) <= data_cfg['data']['max_token_length'])
+    split_data = tokenized_dataset.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
     train_dataset, eval_dataset = split_data["train"], split_data["test"]
+    print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
 
     # 2. 모델 및 설정 로드
     model = ModelLoader.load_model(
@@ -63,13 +64,14 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
     model.config.use_cache = False
     model.gradient_checkpointing_enable()
     
-    # LoRA Config (model_config.yaml의 lora 세션 기반)
+    # 3. LoRA Config (model_config.yaml의 lora 세션 기반)
     lora_params = model_cfg['lora'][model_type]
     peft_config = LoraConfigFactory.create_default_config(**lora_params)
 
+    # 4. Data Collator (Instruction 부분 마스킹)
     data_collator = CollatorFactory.create_completion_only_collator(tokenizer_wrapper.tokenizer)
 
-    # 3. Trainer 생성 및 학습
+    # 5. Trainer 생성 및 학습 시작
     trainer = BaseSFTTrainer(
         model=model,
         tokenizer=tokenizer_wrapper.tokenizer,
@@ -85,7 +87,7 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
     
     trainer.train()
 
-    # 메모리 정리 (중요: 다음 모델 학습을 위해 GPU 메모리 비우기)
+    # 6. 메모리 정리 (중요: 다음 모델 학습을 위해 GPU 메모리 비우기)
     del model
     del trainer
     gc.collect()
@@ -97,17 +99,17 @@ def main():
     """
     data_cfg, model_cfg, train_cfg = load_configs()
     
-    # 데이터 로드 및 분류
+    # 1. 데이터 로드 및 분류
     loader = DataLoader(data_cfg['data']['train_csv'])
     df = loader.load_and_flatten()
     classifier = QuestionClassifier()
     knowledge_df, inferential_df = classifier.split_by_type(df)
 
-    # 1. 지식형(4지선다) 학습
+    # 2. 지식형(4지선다) 학습
     print(f"4지선다(지식형) 데이터: {len(knowledge_df)}개")
     train_model("knowledge", knowledge_df, data_cfg, model_cfg, train_cfg)
     
-    # 2. 추론형(5지선다) 학습
+    # 3. 추론형(5지선다) 학습
     print(f"5지선다(추론형) 데이터: {len(inferential_df)}개")
     train_model("inferential", inferential_df, data_cfg, model_cfg, train_cfg)
 
