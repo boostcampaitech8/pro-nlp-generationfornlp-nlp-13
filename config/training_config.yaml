@@ -3,32 +3,37 @@ training:
   common:
     do_train: true
     do_eval: true
-    max_seq_length: 1024
+    max_seq_length: 2048
     lr_scheduler_type: "cosine"
     weight_decay: 0.01
     logging_steps: 100
     save_strategy: "epoch"
-    eval_strategy: "epoch"
+    save_steps: 1
+    eval_strategy: "steps"
+    eval_steps: 50
     save_total_limit: 1
     save_only_model: true
     report_to: "none"
     metric_for_best_model: "f1"
     greater_is_better: true
+    fp16: true               # V100 필수
+    bf16: false
+    optim: "paged_adamw_32bit"
   
   # 4지선다(지식형) 학습 설정
   knowledge:
     output_dir: "/data/ephemeral/pro-nlp-generationfornlp-nlp-13/result/knowledge_decoder"
-    per_device_train_batch_size: 1
+    per_device_train_batch_size: 2
     per_device_eval_batch_size: 1
-    # gradient_accumulation_steps: 4
-    num_train_epochs: 3
-    learning_rate: 2e-5
+    gradient_accumulation_steps: 4
+    num_train_epochs: 1
+    learning_rate: 2e-4
   
   # 5지선다(독해형) 학습 설정
   inferential:
     output_dir: "/data/ephemeral/pro-nlp-generationfornlp-nlp-13/result/inferential_decoder"
-    per_device_train_batch_size: 1
+    per_device_train_batch_size: 2
     per_device_eval_batch_size: 1
-    # gradient_accumulation_steps: 4
-    num_train_epochs: 3
-    learning_rate: 2e-5
+    gradient_accumulation_steps: 4
+    num_train_epochs: 1
+    learning_rate: 2e-4

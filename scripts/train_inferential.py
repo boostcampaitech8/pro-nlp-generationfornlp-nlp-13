@@ -35,7 +35,7 @@ def main():
     # 1. 설정 로드
     data_cfg, model_cfg, train_cfg = load_configs()
     
-    # 2. 데이터 로딩 및 분류
+    # 2. 데이터 로딩 및 분류 (5지선다 추출)
     loader = DataLoader(data_cfg['data']['train_csv'])
     df = loader.load_and_flatten()
     
@@ -44,30 +44,25 @@ def main():
     
     print(f"5지선다(추론형) 데이터: {len(inferential_df)}개")
     
-    # 3. 프롬프트 생성 및 Dataset 변환
+    # 3. 데이터 전처리 (Prompt -> Tokenize -> Split)
     prompt_formatter = PromptFormatter()
     processor = DatasetProcessor(prompt_formatter)
     inferential_dataset = processor.process(inferential_df)
     
-    # 4. 토크나이저 로드 (model_config.yaml 기반)
     i_model_cfg = model_cfg['model']['inferential']
     tokenizer_wrapper = TokenizerWrapper(
         model_name=i_model_cfg['model_name']
     )
 
-    # 5. 토크나이징 및 데이터셋 분할
     tokenized_dataset = tokenizer_wrapper.tokenize_dataset(inferential_dataset)
-    
-    # max_token_length 기준 필터링 및 Train/Eval 분할
     tokenized_dataset = tokenized_dataset.filter(lambda x: len(x["input_ids"]) <= data_cfg['data']['max_token_length'])  
-    tokenized_dataset = tokenized_dataset.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
+   
+    split_data = tokenized_dataset.train_test_split(test_size=data_cfg['data']['test_size'], seed=42)
+    train_dataset, eval_dataset = split_data["train"], split_data["test"]
 
-    train_dataset = tokenized_dataset['train']
-    eval_dataset = tokenized_dataset['test']
-    
     print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
     
-    # 6. 모델 및 LoRA 설정 로딩
+    # 4. 모델 및 LoRA 설정 로딩
     model = ModelLoader.load_model(
         model_name=i_model_cfg['model_name'],
         torch_dtype=i_model_cfg['torch_dtype'],
@@ -77,12 +72,12 @@ def main():
     lora_params = model_cfg['lora']['inferential']
     peft_config = LoraConfigFactory.create_default_config(**lora_params)
     
-    # 7. Data Collator 생성 (응답 부분만 학습)
+    # 5. Data Collator 생성 (응답 부분만 학습)
     data_collator = CollatorFactory.create_completion_only_collator(
         tokenizer_wrapper.tokenizer
     )
     
-    # 8. Trainer 생성 및 학습 실행
+    # 6. Trainer 생성 및 학습 실행
     trainer = BaseSFTTrainer(
         model=model,
         tokenizer=tokenizer_wrapper.tokenizer,

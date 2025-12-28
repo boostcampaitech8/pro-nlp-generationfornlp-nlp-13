@@ -19,14 +19,16 @@ class KnowledgeModel:
 
         # 8-bit 양자화 설정 (추론형 모델과 동일한 효율적 메모리 관리 적용)
         quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            llm_int8_enable_fp32_cpu_offload=True # CPU 오프로드 시 안정성 확보
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.float16
         )
         self.model = AutoPeftModelForCausalLM.from_pretrained(
             checkpoint_path,
             trust_remote_code=True,
             quantization_config=quantization_config,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=torch.float16,
             device_map=device_map,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(

@@ -60,15 +60,20 @@ class BaseSFTTrainer:
             "per_device_eval_batch_size": training_arg[model_type]["per_device_eval_batch_size"],
             "num_train_epochs": training_arg[model_type]["num_train_epochs"],
             "learning_rate": float(training_arg[model_type]["learning_rate"]),
+            "fp16": training_arg["common"]["fp16"],                  # V100 필수
+            "bf16": training_arg["common"]["bf16"],
+            "optim": training_arg["common"]["optim"],  #  32bit 사용 (안정성) / paged_adamw_8bit -> 더 안된다면 이걸로!
             "weight_decay": training_arg["common"]["weight_decay"],
             "logging_steps": training_arg["common"]["logging_steps"],
             "save_strategy": training_arg["common"]["save_strategy"],
+            "save_steps": training_arg["common"]["save_steps"],
             "eval_strategy": training_arg["common"]["eval_strategy"],
+            "eval_steps": training_arg["common"]["eval_steps"],
             "save_total_limit": training_arg["common"]["save_total_limit"],
             "save_only_model": training_arg["common"]["save_only_model"],
             "report_to": training_arg["common"]["report_to"],
             "metric_for_best_model": training_arg["common"]["metric_for_best_model"],
-            "greater_is_better": training_arg["common"]["greater_is_better"],
+            # "greater_is_better": training_arg["common"]["greater_is_better"],
         }
 
         return SFTConfig(**default_config)
