@@ -88,10 +88,12 @@ def main():
     print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
     
     # 4. 모델 및 LoRA 설정 로딩
+    m_cfg = model_cfg['model']['inferential']
     model = ModelLoader.load_model(
-        model_name=i_model_cfg['model_name'],
-        torch_dtype=i_model_cfg['torch_dtype'],
-        device_map=i_model_cfg['device_map']
+        model_name=m_cfg['model_name'],
+        torch_dtype=m_cfg['torch_dtype'],
+        device_map=m_cfg['device_map'],
+        is_quantization=m_cfg['is_quantization']
     )
     
     lora_params = model_cfg['lora']['inferential']

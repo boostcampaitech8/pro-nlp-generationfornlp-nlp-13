@@ -88,11 +88,14 @@ def main():
     print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
     
     # 4. 모델 및 LoRA 설정 로딩
+    m_cfg = model_cfg['model']['knowledge']
     model = ModelLoader.load_model(
-        model_name=k_model_cfg['model_name'],
-        torch_dtype=k_model_cfg['torch_dtype'],
-        device_map=k_model_cfg['device_map']
+        model_name=m_cfg['model_name'],
+        torch_dtype=m_cfg['torch_dtype'],
+        device_map=m_cfg['device_map'],
+        is_quantization=m_cfg['is_quantization']
     )
+
     
     lora_params = model_cfg['lora']['knowledge']
     peft_config = LoraConfigFactory.create_default_config(**lora_params)
