@@ -23,6 +23,7 @@ from src.training.metrics import get_preprocess_logits_for_metrics, get_compute_
 from src.training.base_trainer import BaseSFTTrainer
 from src.models.knowledge_model import KnowledgeModel
 from src.models.inferential_model import InferentialModel
+from src.utils.seed import set_seed
 
 
 
@@ -121,8 +122,10 @@ def main():
     """
     전체 추론 파이프라인(설정 로드, 모델 초기화, 데이터 처리, 추론, 저장)을 실행합니다.
     """
-    # 1. Config 로드
+    # 1. Config 로드, seed 설정, wandb 초기화
     data_cfg, model_cfg, inference_cfg = load_configs()
+
+    set_seed(42)
     
     # 2. Dual Model 초기화
     print(">>> Loading Dual Models...")

@@ -11,6 +11,8 @@ from src.models.model_loader import ModelLoader
 from src.models.lora_config import LoraConfigFactory
 from src.training.metrics import get_preprocess_logits_for_metrics, get_compute_metrics
 from src.training.base_trainer import BaseSFTTrainer
+from src.utils.seed import set_seed
+from src.utils.wandb import wandb_init, wandb_finish
 
 def load_configs():
     """
@@ -36,6 +38,28 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
         train_cfg: Trainer 및 TrainingArgs 관련 설정 딕셔너리
     """
     print(f"\n>>> {model_type.upper()} 모델 학습 시작")
+
+    # 0. wandb 초기화
+    # >>> [TODO] 원하는 설정값으로 수정하세요!!
+    wandb_config = {
+        # 모델 설정 (model_cfg에서 추출)
+        f"{model_type}_model": model_cfg['model'][model_type]['model_name'],
+        
+        # LoRA 하이퍼파라미터 (lora_params에서 추출)
+        "lora_r": model_cfg['lora'][model_type]['r'],
+        "lora_alpha": model_cfg['lora'][model_type]['lora_alpha'],
+        
+        # 학습 설정 (train_cfg에서 추출)
+        f"{model_type}_lr": train_cfg['training'][model_type].get('learning_rate'),
+        f"{model_type}_batch_size": train_cfg['training'][model_type].get('per_device_train_batch_size'),
+        f"{model_type}_epochs": train_cfg['training'][model_type].get('num_train_epochs'),
+
+        # 기타
+        "seed": 42
+    }
+    
+    run_name = ""   # >>> [TODO] 추가하세요!
+    wandb_init(config=wandb_config, project_name="My_LLM_Project", run_name=run_name)
     
     # 1. 데이터 전처리 (Prompt -> Tokenize -> Split)
     prompt_formatter = PromptFormatter()
@@ -86,6 +110,7 @@ def train_model(model_type, dataset_df, data_cfg, model_cfg, train_cfg):
     )
     
     trainer.train()
+    wandb_finish()
 
     # 6. 메모리 정리 (중요: 다음 모델 학습을 위해 GPU 메모리 비우기)
     del model
@@ -98,6 +123,8 @@ def main():
     데이터를 로드하고 문제 유형별로 분류한 뒤, 지식형과 추론형 모델을 순차적으로 학습시킵니다.
     """
     data_cfg, model_cfg, train_cfg = load_configs()
+
+    set_seed(42)
     
     # 1. 데이터 로드 및 분류
     loader = DataLoader(data_cfg['data']['train_csv'])
