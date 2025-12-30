@@ -20,9 +20,10 @@ baseline_code/
 
 # Data (원본/중간 산출물)
 /data/
-.csv
-.pkl
-.tar.gz
+*.csv
+*.pkl
+*.tar.gz
+*.parquet
 
 # Training outputs / logs
 outputs/
