@@ -1,62 +1,164 @@
-import pandas as pd
-from ast import literal_eval
-from typing import Dict, List
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional, Union
 
-class DataLoader:
-    """
-    원본 CSV 데이터를 로드하고 JSON 형식의 필드를 파싱하는 클래스.
-    """
+import pandas as pd
+from datasets import Dataset, DatasetDict
+from sklearn.model_selection import train_test_split
+
+from src.data.preprocessor import parse_problems_column, add_choices_len
+from src.prompt.prompt_builder import PromptBuilder, PromptConfig
+from src.data.tokenizer_wrapper import TokenizerWrapper, TokenizerConfig
+
+@dataclass(frozen=True)
+class DataConfig:
+    train_path: Optional[Union[str, Path]] = None
+    test_path: Optional[Union[str, Path]] = None
+    valid_ratio: float = 0.1
+    seed: int = 42
+
+    do_split: bool = True
+
+
+def load_csv(path: Union[str, Path]) -> pd.DataFrame:
+    return pd.read_csv(path)
+
+
+def build_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    df = parse_problems_column(df)
+    df = add_choices_len(df)
+
+    return df
+
+
+def df_to_dataset(df: pd.DataFrame) -> Dataset:
+    return Dataset.from_pandas(df, preserve_index=False)
+
+
+def make_train_valid_dataset(
+    data_cfg: DataConfig,
+    prompt_cfg: PromptConfig,
+    tokenize_cfg_train: TokenizerConfig,
+    tokenize_cfg_gen: TokenizerConfig,
+    tokenizer,
+) -> DatasetDict:
     
-    def __init__(self, csv_path: str):
-        """
-        DataLoader 클래스를 초기화합니다.
-        
-        Args:
-            csv_path: 로드할 CSV 파일의 경로
-        """
-        self.csv_path = csv_path
-        
-    def load(self) -> pd.DataFrame:
-        """
-        지정된 경로에서 CSV 파일을 로드합니다.
-        
-        Returns:
-            로드된 원본 데이터를 담고 있는 pandas DataFrame
-        """
-        return pd.read_csv(self.csv_path)
+    df = load_csv(data_cfg.train_path)
+    df = build_dataframe(df)
+
+    if data_cfg.do_split:
+        train_df, valid_df = train_test_split(
+            df,
+            test_size=data_cfg.valid_ratio,
+            stratify=df["choices_len"],
+            random_state=data_cfg.seed,
+        )
+        train_ds = Dataset.from_pandas(train_df, preserve_index=False)
+        valid_ds = Dataset.from_pandas(valid_df, preserve_index=False)
+    else:
+        train_ds = Dataset.from_pandas(df, preserve_index=False)
+        valid_ds = None
     
-    def flatten_problems(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        'problems' JSON 문자열 필드를 개별 컬럼으로 펼쳐서 새로운 DataFrame을 생성합니다.
-        
-        Args:
-            df: 'problems' 컬럼을 포함하는 원본 DataFrame
-            
-        Returns:
-            id, paragraph, question, choices 등이 개별 컬럼으로 분리된 DataFrame
-        """
-        records = []
-        for _, row in df.iterrows():
-            problems = literal_eval(row['problems'])
-            record = {
-                'id': row['id'],
-                'paragraph': row['paragraph'],
-                'question': problems['question'],
-                'choices': problems['choices'],
-                'answer': problems.get('answer', None),
-                'question_plus': problems.get('question_plus', None),
-            }
-            if 'question_plus' in problems:
-                record['question_plus'] = problems['question_plus']
-            records.append(record)
-        return pd.DataFrame(records)
+    prompt_cfg_train = PromptConfig(
+        policy=prompt_cfg.policy,
+        mode="train",
+        templates_dir=prompt_cfg.templates_dir,
+        verbose=prompt_cfg.verbose,
+    )
+    prompt_cfg_test = PromptConfig(
+        policy=prompt_cfg.policy,
+        mode="test",
+        templates_dir=prompt_cfg.templates_dir,
+        verbose=prompt_cfg.verbose,
+    )
+
+    builder_train = PromptBuilder(prompt_cfg_train)
+    builder_test = PromptBuilder(prompt_cfg_test)
+
+    tokenize_wrapper_train = TokenizerWrapper(tokenizer, tokenize_cfg_train)
+    tokenize_wrapper_gen = TokenizerWrapper(tokenizer, tokenize_cfg_gen)
+
+    train_msg = train_ds.map(
+        builder_train.build_message,
+        batched=False,
+        remove_columns=train_ds.column_names,
+        desc="Build train messages (teacher forcing)",
+    )
+    train_text = train_msg.map(
+        tokenize_wrapper_train.to_text,
+        batched=False,
+        remove_columns=["messages"],
+        desc="Serialize train to text",
+    )
+    train_tf = train_text.map(
+        tokenize_wrapper_train.tokenize_fn,
+        batched=True,
+        remove_columns=["text"],
+        desc="Tokenize train",
+    )
     
-    def load_and_flatten(self) -> pd.DataFrame:
-        """
-        데이터 로드와 파싱(flatten) 과정을 한 번에 수행합니다.
-        
-        Returns:
-            전처리가 완료된 학습용 DataFrame
-        """
-        df = self.load()
-        return self.flatten_problems(df)
+    if valid_ds is None:
+        return DatasetDict({"train": train_tf})
+
+    valid_msg = valid_ds.map(
+        builder_train.build_message,
+        batched=False,
+        remove_columns=valid_ds.column_names,
+        desc="Build valid messages (teacher forcing)",
+    )
+    valid_text = valid_msg.map(
+        tokenize_wrapper_train.to_text,
+        batched=False,
+        remove_columns=["messages"],
+        desc="Serialize valid to text",
+    )
+    valid_tf = valid_text.map(
+        tokenize_wrapper_train.tokenize_fn,
+        batched=True,
+        remove_columns=["text"],
+        desc="Tokenize valid",
+    )
+
+    valid_gen_msg = valid_ds.map(
+        builder_test.build_message,
+        batched=False,
+        desc="Build valid_gen messages (prompt only)",
+    )
+
+    # 이게 맞는건지 모르겠음. -> 일단 보류
+    def _to_text_keep_meta(ex):
+        out = tokenize_wrapper_gen.to_text(ex)  
+        out["id"] = ex["id"]
+        out["answer"] = ex["answer"]
+        out["choices_len"] = ex["choices_len"]
+        return out
+
+    valid_gen_text = valid_gen_msg.map(
+        _to_text_keep_meta,
+        batched=False,
+        # message 
+        remove_columns=["messages"],
+        desc="Serialize valid_gen to text (+meta)",
+    )
+
+    def _tokenize_keep_meta(batch):
+        tok = tokenize_wrapper_gen.tokenize_fn({"text": batch["text"]})
+        tok["id"] = batch["id"]
+        tok["answer"] = batch["answer"]
+        tok["choices_len"] = batch["choices_len"]
+        return tok
+
+    valid_gen = valid_gen_text.map(
+        _tokenize_keep_meta,
+        batched=True,
+        remove_columns=valid_gen_text.column_names,
+        desc="Tokenize valid_gen",
+    )
+
+    return DatasetDict(
+        {
+            "train": train_tf,
+            "validation": valid_tf,
+            "validation_gen": valid_gen,
+        }
+    )

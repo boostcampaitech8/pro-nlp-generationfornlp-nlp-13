@@ -1,79 +1,43 @@
-from transformers import AutoTokenizer
-from datasets import Dataset
+from dataclasses import dataclass
+from typing import Any, Dict, Union
+
+
+@dataclass(frozen=True)
+class TokenizerConfig:
+    max_length: int = 2048
+    padding: Union[bool, str] = False
+    truncation: bool = True
+    add_generation_prompt: bool = False
 
 class TokenizerWrapper:
-    """
-    AutoTokenizer를 래핑하여 모델에 최적화된 설정 및 데이터셋 토크나이징을 수행하는 클래스.
-    """
-    
-    def __init__(self, model_name: str):
-        """
-        TokenizerWrapper 클래스를 초기화하고 지정된 모델의 토크나이저를 로드합니다.
-        
-        Args:
-            model_name: 로드할 모델의 이름 또는 경로
-        """
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    def __init__(self, tokenizer: Any, config: TokenizerConfig):
+        self.tokenizer = tokenizer
+        self.cfg = config
 
-    def formatting_prompts_func(self, example):
-        """
-        토크나이저의 chat template을 사용하여 예시 데이터들을 텍스트 형식으로 포맷팅합니다.
-        
-        Args:
-            example: 'messages' 키를 포함하는 배치 데이터
-            
-        Returns:
-            Chat 템플릿이 적용된 포맷팅된 텍스트 문자열 리스트
-        """
-        output_texts = []
-        for i in range(len(example["messages"])):
-            output_texts.append(
-                self.tokenizer.apply_chat_template(
-                    example["messages"][i],
-                    tokenize=False,
-                )
-            )
-        return output_texts
-
-    
-    def tokenize(self, element):
-        """
-        배치 데이터에 대해 토크나이징을 수행합니다.
-        
-        Args:
-            element: 포맷팅할 문장들이 포함된 배치 데이터
-            
-        Returns:
-            input_ids와 attention_mask를 포함하는 딕셔너리
-        """
-        outputs = self.tokenizer(
-            self.formatting_prompts_func(element),
-            truncation=False,
-            padding=False,
-            return_overflowing_tokens=False,
-            return_length=False,
+    def to_text(self, example: Dict[str, Any]) -> Dict[str, str]:
+        text = self.tokenizer.apply_chat_template(
+            example["messages"],
+            tokenize=False,
+            add_generation_prompt=self.cfg.add_generation_prompt,
         )
-        return {
-            "input_ids": outputs["input_ids"],
-            "attention_mask": outputs["attention_mask"],
+
+        return {"text": text}
+
+    def tokenize_fn(self, example: Dict[str, Any]) -> Dict[str, Any]:
+        # batched=False -> str / batched=True -> List[str]
+        texts = example["text"]
+        if isinstance(texts, str):
+            texts = [texts]
+
+        tok_kwargs: Dict[str, Any] = {
+            "truncation": self.cfg.truncation,
+            "padding": self.cfg.padding,
         }
-    
-    def tokenize_dataset(self, dataset: Dataset, num_proc: int = 4) -> Dataset:
-        """
-        전체 데이터셋에 대해 병렬 처리를 사용하여 토크나이징을 적용합니다.
-        
-        Args:
-            dataset: 토크나이징을 수행할 원본 HuggingFace Dataset
-            num_proc: 병렬 처리에 사용할 프로세스 수
-            
-        Returns:
-            토크나이징이 완료되고 기존 컬럼이 제거된 새로운 Dataset 객체
-        """
-        return dataset.map(
-            self.tokenize,
-            remove_columns=list(dataset.features),
-            batched=True,
-            num_proc=num_proc,
-            load_from_cache_file=True,
-            desc="Tokenizing",
-        )
+        if self.cfg.truncation:
+            tok_kwargs["max_length"] = self.cfg.max_length
+        out = self.tokenizer(texts, **tok_kwargs)
+
+        return {
+            "input_ids": out["input_ids"],
+            "attention_mask": out["attention_mask"],
+        }
