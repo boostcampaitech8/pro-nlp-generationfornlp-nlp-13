@@ -6,8 +6,6 @@ import numpy as np
 import torch
 from ast import literal_eval
 from tqdm import tqdm
-from peft import AutoPeftModelForCausalLM
-from transformers import AutoTokenizer, BitsAndBytesConfig
 
 # 프로젝트 루트 경로 추가
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
@@ -131,26 +129,14 @@ def main():
     
     # 2. Dual Model 초기화
     print(">>> Loading Dual Models...")
-
-    # 8-bit 양자화 설정 (메모리 효율화)
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_compute_dtype=torch.float16
-    )
-
-    model = AutoPeftModelForCausalLM.from_pretrained(
-        inference_cfg['models']['default']['checkpoint_path'],
-        trust_remote_code=True,
-        quantization_config=quantization_config,
-        torch_dtype=torch.float16,
-        device_map=model_cfg['model']['default']['device_map'],
-    )
-    tokenizer = AutoTokenizer.from_pretrained(
-        inference_cfg['models']['default']['checkpoint_path'],
-        trust_remote_code=True,
-    )
+    # dual_model = DualModel(
+    #     inferential_ckpt=inference_cfg['models']['inferential']['checkpoint_path'],
+    #     knowledge_ckpt=inference_cfg['models']['knowledge']['checkpoint_path'],
+    #     device_map='auto'
+    # )
+    k_model = KnowledgeModel(inference_cfg['models']['knowledge']['checkpoint_path'])
+    i_model = InferentialModel(inference_cfg['models']['inferential']['checkpoint_path'])
+    tokenizer = k_model.get_tokenizer()
 
     # 3. 데이터 로드 및 전처리
     loader = DataLoader(data_cfg['data']['test_csv'])
@@ -178,8 +164,10 @@ def main():
 
     print("🚀 Logits 기반 추론 시작...")
 
-    model.eval()
-
+    k_model = k_model.get_model()
+    i_model = i_model.get_model()
+    k_model.eval()
+    i_model.eval()
     with torch.inference_mode():
         for ex in tqdm(test_ds_text):
             _id = ex["id"]
@@ -192,17 +180,29 @@ def main():
                 truncation=True,
                 max_length=4096,
             ).to("cuda")
-           
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=512,
-                do_sample=False,
-                temperature=0.0,
-                pad_token_id=tokenizer.pad_token_id,
-                eos_token_id=tokenizer.eos_token_id,
-                return_dict_in_generate=True,
-                output_scores=True,       
-            )
+
+            if ex['question_type'] == 'knowledge':
+                outputs = k_model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    do_sample=False,
+                    temperature=0.0,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    return_dict_in_generate=True,
+                    output_scores=True,       
+                )
+            else:
+                outputs = i_model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    do_sample=False,
+                    temperature=0.0,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    return_dict_in_generate=True,
+                    output_scores=True,       
+                )
 
             input_len = inputs["input_ids"].shape[-1]
             
