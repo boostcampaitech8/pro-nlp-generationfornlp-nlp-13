@@ -12,6 +12,8 @@ from src.models.model_loader import ModelLoader
 from src.models.lora_config import LoraConfigFactory
 from src.training.metrics import get_preprocess_logits_for_metrics, get_compute_metrics
 from src.training.base_trainer import BaseSFTTrainer
+from src.utils.seed import set_seed
+from src.utils.wandb import wandb_init, wandb_finish
 
 def load_configs():
     """
@@ -34,6 +36,29 @@ def main():
     """
     # 1. 설정 로드
     data_cfg, model_cfg, train_cfg = load_configs()
+
+    set_seed(42)
+
+    # >>> [TODO] 원하는 설정값으로 수정하세요!!
+    wandb_config = {
+        # 모델 설정 (model_cfg에서 추출)
+        "knowledge_model": model_cfg['model']['knowledge']['model_name'],
+        
+        # LoRA 하이퍼파라미터 (lora_params에서 추출)
+        "lora_r": model_cfg['lora']['knowledge']['r'],
+        "lora_alpha": model_cfg['lora']['knowledge']['lora_alpha'],
+        
+        # 학습 설정 (train_cfg에서 추출)
+        "knowledge_lr": train_cfg['training']['knowledge'].get('learning_rate'),
+        "knowledge_batch_size": train_cfg['training']['knowledge'].get('per_device_train_batch_size'),
+        "knowledge_epochs": train_cfg['training']['knowledge'].get('num_train_epochs'),
+
+        # 기타
+        "seed": 42
+    }
+    
+    run_name = ""   # >>> [TODO] 추가하세요!
+    wandb_init(config=wandb_config, project_name="My_LLM_Project", run_name=run_name)
     
     # 2. 데이터 로딩 및 분류 (4지선다 추출)
     loader = DataLoader(data_cfg['data']['train_csv'])
@@ -63,11 +88,14 @@ def main():
     print(f"Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
     
     # 4. 모델 및 LoRA 설정 로딩
+    m_cfg = model_cfg['model']['knowledge']
     model = ModelLoader.load_model(
-        model_name=k_model_cfg['model_name'],
-        torch_dtype=k_model_cfg['torch_dtype'],
-        device_map=k_model_cfg['device_map']
+        model_name=m_cfg['model_name'],
+        torch_dtype=m_cfg['torch_dtype'],
+        device_map=m_cfg['device_map'],
+        is_quantization=m_cfg['is_quantization']
     )
+
     
     lora_params = model_cfg['lora']['knowledge']
     peft_config = LoraConfigFactory.create_default_config(**lora_params)
@@ -92,6 +120,7 @@ def main():
     )
     
     trainer.train()
+    wandb_finish()
 
 if __name__ == "__main__":
     main()
