@@ -63,3 +63,39 @@ def compute_metrics(eval_pred, label_pos_from_tail: int = 3):
 
     macro_f1 = float(np.mean(f1s)) if f1s else 0.0
     return {"accuracy": acc, "macro_f1": macro_f1}
+
+def preprocess_logits_for_metrics(logits, labels, pos_from_tail=3):
+    """
+    반환: (batch, 5)  -> '1'~'5'에 해당하는 logits만 뽑아서 metrics 단계로 전달
+    """
+    # Trainer가 (logits, ...) 튜플을 줄 때가 있어서 정리
+    if isinstance(logits, tuple):
+        logits = logits[0]  # (B, L, V)
+
+    # labels: (B, L), pad/무시 영역은 -100일 가능성이 큼
+    # real_len = 마지막으로 labels != -100 인 위치 + 1 로 복원
+    labels_t = torch.as_tensor(labels)
+    not_ignored = (labels_t != -100)
+
+    # 샘플별로 마지막 not_ignored 위치 찾기
+    # (뒤에서부터 True 찾기)
+    rev = torch.flip(not_ignored, dims=[1])
+    last_true_from_end = torch.argmax(rev.int(), dim=1)          # (B,)
+    has_any = not_ignored.any(dim=1)                             # (B,)
+    # real_len = seq_len - last_true_from_end
+    seq_len = labels_t.size(1)
+    real_len = seq_len - last_true_from_end
+
+    # 만약 labels가 전부 -100인 샘플이 있으면(비정상) 그냥 seq_len로 처리
+    real_len = torch.where(has_any, real_len, torch.full_like(real_len, seq_len))
+
+    pos = (real_len - pos_from_tail).clamp(min=0, max=seq_len-1) # (B,)
+
+    # (B, V)로 해당 위치의 logits만 gather
+    logits_t = torch.as_tensor(logits)                           # (B, L, V)
+    batch_idx = torch.arange(logits_t.size(0), device=logits_t.device)
+    picked = logits_t[batch_idx, pos, :]                         # (B, V)
+
+    # digit ids만 슬라이스 -> (B, 5)
+    picked_digits = picked[:, DIGIT_IDS]
+    return picked_digits

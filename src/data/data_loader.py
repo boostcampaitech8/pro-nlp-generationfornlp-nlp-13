@@ -82,7 +82,7 @@ def make_train_valid_dataset(
         builder_train.build_message,
         batched=False,
         remove_columns=train_ds.column_names,
-        desc="Build train messages (teacher forcing)",
+        desc="Build train messages",
     )
     train_text = train_msg.map(
         tokenize_wrapper_train.to_text,
@@ -90,15 +90,9 @@ def make_train_valid_dataset(
         remove_columns=["messages"],
         desc="Serialize train to text",
     )
-    train_tf = train_text.map(
-        tokenize_wrapper_train.tokenize_fn,
-        batched=True,
-        remove_columns=["text"],
-        desc="Tokenize train",
-    )
     
     if valid_ds is None:
-        return DatasetDict({"train": train_tf})
+        return DatasetDict({"train": train_text})
 
     valid_msg = valid_ds.map(
         builder_train.build_message,
@@ -111,12 +105,6 @@ def make_train_valid_dataset(
         batched=False,
         remove_columns=["messages"],
         desc="Serialize valid to text",
-    )
-    valid_tf = valid_text.map(
-        tokenize_wrapper_train.tokenize_fn,
-        batched=True,
-        remove_columns=["text"],
-        desc="Tokenize valid",
     )
 
     valid_gen_msg = valid_ds.map(
@@ -131,6 +119,7 @@ def make_train_valid_dataset(
         out["id"] = ex["id"]
         out["answer"] = ex["answer"]
         out["choices_len"] = ex["choices_len"]
+        out["choices"] = ex["choices"]
         return out
 
     valid_gen_text = valid_gen_msg.map(
@@ -141,24 +130,10 @@ def make_train_valid_dataset(
         desc="Serialize valid_gen to text (+meta)",
     )
 
-    def _tokenize_keep_meta(batch):
-        tok = tokenize_wrapper_gen.tokenize_fn({"text": batch["text"]})
-        tok["id"] = batch["id"]
-        tok["answer"] = batch["answer"]
-        tok["choices_len"] = batch["choices_len"]
-        return tok
-
-    valid_gen = valid_gen_text.map(
-        _tokenize_keep_meta,
-        batched=True,
-        remove_columns=valid_gen_text.column_names,
-        desc="Tokenize valid_gen",
-    )
-
     return DatasetDict(
         {
-            "train": train_tf,
-            "validation": valid_tf,
-            "validation_gen": valid_gen,
+            "train": train_text,
+            "validation": valid_text,
+            "validation_gen": valid_gen_text,
         }
     )

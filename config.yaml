@@ -1,0 +1,86 @@
+model:
+  model_name_or_path: "Qwen/Qwen3-8B"
+  use_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  compute_dtype: "float16"
+  device_map: "auto"
+  use_gradient_checkpointing: true
+  trust_remote_code: true
+
+lora:
+  r: 32
+  lora_alpha: 16
+  lora_dropout: 0.05
+  target_modules: "all-linear"
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+trainer:
+  output_dir: "./outputs/test"
+  max_seq_length: 2048
+  packing: false
+
+  num_train_epochs: 2
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 4
+
+  learning_rate: 2e-4
+  optim: "paged_adamw_32bit"
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  max_grad_norm: 1.0
+
+  fp16: true
+  bf16: false
+
+  eval_strategy: "steps"
+  save_strategy: "steps"
+  logging_steps: 10
+  eval_steps: 20
+  save_steps: 40
+
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_accuracy"
+  greater_is_better: false
+
+  report_to: "wandb"
+  seed: 42
+  remove_unused_columns: false
+
+data:
+  train_path: "./data/train.csv"
+  test_path: "./data/test.csv"
+  valid_ratio: 0.1
+  seed: 42
+  do_split: true
+
+prompt:
+  templates_dir: "./src/prompt/templates"
+  verbose: false
+  policy:
+    system:
+      4: "v1"
+      5: "v1"
+    user:
+      4: "v1"
+      5: "v1"
+
+tokenizer:
+  train:
+    max_length: 2048
+    padding: false
+    truncation: true
+    add_generation_prompt: false
+  gen:
+    max_length: 2048
+    padding: "max_length"
+    truncation: true
+    add_generation_prompt: true
+
+wandb:
+  enabled: true
+  project_name: "qwen3-pipeline-test1"
+  entity: "pro-nlp-generationfornlp-nlp-13"
