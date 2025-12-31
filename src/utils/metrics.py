@@ -64,7 +64,7 @@ def compute_metrics(eval_pred, label_pos_from_tail: int = 3):
     macro_f1 = float(np.mean(f1s)) if f1s else 0.0
     return {"accuracy": acc, "macro_f1": macro_f1}
 
-def preprocess_logits_for_metrics(logits, labels, pos_from_tail=3):
+def preprocess_logits_for_metrics(logits, labels, pos_from_tail=4):
     """
     반환: (batch, 5)  -> '1'~'5'에 해당하는 logits만 뽑아서 metrics 단계로 전달
     """

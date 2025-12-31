@@ -26,7 +26,7 @@ trainer:
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 4
 
-  learning_rate: 2e-4
+  learning_rate: 0.0002
   optim: "paged_adamw_32bit"
   weight_decay: 0.01
   warmup_ratio: 0.05
@@ -48,7 +48,7 @@ trainer:
 
   report_to: "wandb"
   seed: 42
-  remove_unused_columns: false
+  remove_unused_columns: true
 
 data:
   train_path: "./data/train.csv"
@@ -84,3 +84,22 @@ wandb:
   enabled: true
   project_name: "qwen3-pipeline-test1"
   entity: "pro-nlp-generationfornlp-nlp-13"
+
+inference:
+  model:
+    use_gradient_checkpointing: false
+  
+  adapter_path: "./outputs/test/final_model"
+  test_data_path: "./data/test.csv"
+  output_path: "./submission.csv"
+  max_new_tokens: 512
+  do_sample: false
+  
+  prompt:
+    policy:
+      system:
+        4: "v1"
+        5: "v1"
+      user:
+        4: "v1"
+        5: "v1"
