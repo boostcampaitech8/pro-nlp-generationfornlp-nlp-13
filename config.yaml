@@ -9,15 +9,15 @@ model:
   trust_remote_code: true
 
 lora:
-  r: 32
-  lora_alpha: 16
+  r: 16
+  lora_alpha: 32
   lora_dropout: 0.05
   target_modules: "all-linear"
   bias: "none"
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./outputs/test"
+  output_dir: "./models/test"
   max_seq_length: 2048
   packing: false
 
@@ -44,7 +44,7 @@ trainer:
   save_total_limit: 2
   load_best_model_at_end: true
   metric_for_best_model: "eval_accuracy"
-  greater_is_better: false
+  greater_is_better: true
 
   report_to: "wandb"
   seed: 42
@@ -89,7 +89,7 @@ inference:
   model:
     use_gradient_checkpointing: false
   
-  adapter_path: "./outputs/test/final_model"
+  adapter_path: "./models/test/final_model"
   test_data_path: "./data/test.csv"
   output_path: "./submission.csv"
   max_new_tokens: 512
