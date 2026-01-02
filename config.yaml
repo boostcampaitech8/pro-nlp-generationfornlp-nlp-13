@@ -1,5 +1,5 @@
 model:
-  model_name_or_path: "Qwen/Qwen3-8B"
+  model_name_or_path: "Qwen/Qwen3-14B"
   use_4bit: true
   bnb_4bit_quant_type: "nf4"
   bnb_4bit_use_double_quant: true
@@ -17,14 +17,14 @@ lora:
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./outputs/test"
+  output_dir: "./models/qwen3_14B"
   max_seq_length: 2048
   packing: false
 
   num_train_epochs: 2
-  per_device_train_batch_size: 2
+  per_device_train_batch_size: 1
   per_device_eval_batch_size: 1
-  gradient_accumulation_steps: 4
+  gradient_accumulation_steps: 8
 
   learning_rate: 0.0002
   optim: "paged_adamw_32bit"
@@ -44,7 +44,7 @@ trainer:
   save_total_limit: 2
   load_best_model_at_end: true
   metric_for_best_model: "eval_accuracy"
-  greater_is_better: false
+  greater_is_better: true
 
   report_to: "wandb"
   seed: 42
@@ -82,14 +82,15 @@ tokenizer:
 
 wandb:
   enabled: true
-  project_name: "qwen3-pipeline-test1"
+  project_name: "qwen3-14B-test1"
   entity: "pro-nlp-generationfornlp-nlp-13"
+  dir: "./wandb"
 
 inference:
   model:
     use_gradient_checkpointing: false
   
-  adapter_path: "./outputs/test/final_model"
+  adapter_path: "./models/qwen3_14B/final_model"
   test_data_path: "./data/test.csv"
   output_path: "./submission.csv"
   max_new_tokens: 512
