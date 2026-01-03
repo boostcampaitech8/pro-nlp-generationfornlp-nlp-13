@@ -4,9 +4,6 @@
 ### Question
 {question}
 
-### Reference
-{question_plus}
-
 ### Choices
 {choices}
 
