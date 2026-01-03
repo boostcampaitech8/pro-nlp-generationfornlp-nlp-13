@@ -92,7 +92,7 @@ inference:
   adapter_path: "./models/test/final_model"
   test_data_path: "./data/test.csv"
   output_path: "./submission.csv"
-  max_new_tokens: 512
+  max_new_tokens: 100
   do_sample: false
   
   prompt:
