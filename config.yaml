@@ -9,7 +9,7 @@ model:
   trust_remote_code: true
 
 lora:
-  r: 32
+  r: 8
   lora_alpha: 16
   lora_dropout: 0.05
   target_modules: "all-linear"
@@ -17,16 +17,17 @@ lora:
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./models/qwen3_14B"
+  output_dir: "./models/qwen3_14B_eng"
   max_seq_length: 2048
   packing: false
 
-  num_train_epochs: 2
-  per_device_train_batch_size: 1
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
   per_device_eval_batch_size: 1
-  gradient_accumulation_steps: 8
+  gradient_accumulation_steps: 4
 
-  learning_rate: 0.0002
+  learning_rate: 0.0001
+  lr_scheduler_type: "cosine"
   optim: "paged_adamw_32bit"
   weight_decay: 0.01
   warmup_ratio: 0.05
@@ -38,12 +39,12 @@ trainer:
   eval_strategy: "steps"
   save_strategy: "steps"
   logging_steps: 10
-  eval_steps: 20
+  eval_steps: 40
   save_steps: 40
 
   save_total_limit: 2
   load_best_model_at_end: true
-  metric_for_best_model: "eval_accuracy"
+  metric_for_best_model: "eval_macro_f1"
   greater_is_better: true
 
   report_to: "wandb"
@@ -62,10 +63,10 @@ prompt:
   verbose: false
   policy:
     system:
-      4: "v1"
+      4: "expand"
       5: "v1"
     user:
-      4: "v1"
+      4: "eng"
       5: "v1"
 
 tokenizer:
@@ -82,6 +83,7 @@ tokenizer:
 
 wandb:
   enabled: true
+  run_name: "qwen3_14B_eng"
   project_name: "qwen3-14B-test1"
   entity: "pro-nlp-generationfornlp-nlp-13"
   dir: "./wandb"
@@ -89,18 +91,64 @@ wandb:
 inference:
   model:
     use_gradient_checkpointing: false
-  
-  adapter_path: "./models/qwen3_14B/final_model"
+
+  adapter_path: "./models/qwen3_14B_eng_dpo/final_model/policy"
   test_data_path: "./data/test.csv"
-  output_path: "./submission.csv"
-  max_new_tokens: 512
+  output_path: "./submission_dpo.csv"
+  max_new_tokens: 30
   do_sample: false
-  
+
   prompt:
     policy:
       system:
-        4: "v1"
+        4: "expand"
         5: "v1"
       user:
-        4: "v1"
+        4: "eng"
         5: "v1"
+
+dpo:
+  sft_adapter_path: "./models/qwen3_14B_eng/final_model"
+
+  trainer:
+    output_dir: "./models/qwen3_14B_eng_dpo"
+
+    num_train_epochs: 1
+    per_device_train_batch_size: 1
+    per_device_eval_batch_size: 1
+    gradient_accumulation_steps: 4
+
+    learning_rate: 0.000001
+    lr_scheduler_type: "cosine"
+    warmup_ratio: 0.1
+
+    beta: 0.1
+    label_smoothing: 0.0
+    loss_type: "sigmoid"
+
+    fp16: true
+    bf16: false
+
+    eval_strategy: "steps"
+    save_strategy: "steps"
+    logging_steps: 5
+    eval_steps: 20
+    save_steps: 20
+
+    load_best_model_at_end: true
+    metric_for_best_model: "eval_loss"
+    greater_is_better: false
+    save_total_limit: 2
+
+    max_length: 2048
+    max_prompt_length: 1536
+    max_completion_length: 512
+
+    remove_unused_columns: false
+    report_to: "wandb"
+    seed: 42
+
+  data:
+    train_path: "./data/dpo_train.jsonl"
+    eval_path: "./data/dpo_eval.jsonl"
+    seed: 42

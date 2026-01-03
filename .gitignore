@@ -35,7 +35,9 @@ checkpoint
 *.tar.gz
 
 # Models
+models/
 result/
+*.safetensors
 *.bin
 *.pt
 *.index

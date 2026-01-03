@@ -1,0 +1,19 @@
+### Passage
+{paragraph}
+
+### Question
+{question}
+
+### Reference
+{question_plus}
+
+### Choices
+{choices}
+
+### Problem Solving Guidelines
+1. First, summarize the conditions and clues provided in the passage (identify what is being assumed or explained).
+2. Apply generally known knowledge (concepts, principles, examples) if necessary, but ensure it does not contradict the conditions given in the passage.
+3. Select the single choice that best satisfies the conditions.
+
+Output the answer as a single integer between 1 and 4. Do not output any other text.
+Answer:
