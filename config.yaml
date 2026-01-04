@@ -92,9 +92,9 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng_dpo/final_model/policy"
+  adapter_path: "./models/qwen3_14B_eng/final_model"
   test_data_path: "./data/test.csv"
-  output_path: "./submission_dpo.csv"
+  output_path: "./submission2.csv"
   max_new_tokens: 30
   do_sample: false
 
@@ -152,3 +152,7 @@ dpo:
     train_path: "./data/dpo_train.jsonl"
     eval_path: "./data/dpo_eval.jsonl"
     seed: 42
+    # CSV 자동 변환 옵션
+    csv_dir: "./data/dpo_outputs"
+    margin_threshold: 0.995
+    eval_ratio: 0.1

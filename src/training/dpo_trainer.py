@@ -52,9 +52,18 @@ def load_model_with_two_adapters_option3(
     train_adapter_name: str = "policy",
     ref_adapter_name: str = "ref",
 ):
+    from pathlib import Path
+
     print("=" * 60)
     print("Loading Models for DPO (Shared Base)")
     print("=" * 60)
+
+    # Validate SFT adapter exists
+    if not Path(sft_adapter_path).exists():
+        raise FileNotFoundError(
+            f"SFT adapter not found at: {sft_adapter_path}\n"
+            "Please run SFT training first or check the path in config.yaml"
+        )
 
     bnb_config = _get_bnb_config(model_cfg)
 
