@@ -113,12 +113,12 @@ dpo:
   trainer:
     output_dir: "./models/qwen3_14B_eng_dpo"
 
-    num_train_epochs: 1
+    num_train_epochs: 2
     per_device_train_batch_size: 1
     per_device_eval_batch_size: 1
     gradient_accumulation_steps: 4
 
-    learning_rate: 0.000001
+    learning_rate: 0.000005
     lr_scheduler_type: "cosine"
     warmup_ratio: 0.1
 
@@ -141,8 +141,8 @@ dpo:
     save_total_limit: 2
 
     max_length: 2048
-    max_prompt_length: 1536
-    max_completion_length: 512
+    max_prompt_length: 1820
+    max_completion_length: 30
 
     remove_unused_columns: false
     report_to: "wandb"
@@ -152,7 +152,6 @@ dpo:
     train_path: "./data/dpo_train.jsonl"
     eval_path: "./data/dpo_eval.jsonl"
     seed: 42
-    # CSV 자동 변환 옵션
     csv_dir: "./data/dpo_outputs"
     margin_threshold: 0.995
     eval_ratio: 0.1

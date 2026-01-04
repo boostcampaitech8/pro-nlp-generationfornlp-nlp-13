@@ -171,7 +171,7 @@ def build_dpo_trainer_option3(
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
     )
 
     return trainer

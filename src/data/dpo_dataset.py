@@ -2,6 +2,7 @@ import argparse
 import ast
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -9,28 +10,31 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 
-def main(
-    train_gen_path: str,
-    valid_gen_path: str,
-    output_train_path: str,
-    output_eval_path: str,
-    margin_threshold: float = 0.995,
-    eval_ratio: float = 0.1,
-    seed: int = 42,
-):
+@dataclass(frozen=True)
+class DPODatasetConfig:
+    train_gen_path: str
+    valid_gen_path: str
+    output_train_path: str
+    output_eval_path: str
+    margin_threshold: float = 0.995
+    eval_ratio: float = 0.1
+    seed: int = 42
+
+
+def main(cfg: DPODatasetConfig):
     print("=" * 80)
     print("DPO Dataset Builder - Create chosen/rejected pairs")
     print("=" * 80)
-    print(f"Train Gen CSV: {train_gen_path}")
-    print(f"Valid Gen CSV: {valid_gen_path}")
-    print(f"Margin Threshold: {margin_threshold}")
-    print(f"Eval Ratio: {eval_ratio}")
-    print(f"Seed: {seed}")
+    print(f"Train Gen CSV: {cfg.train_gen_path}")
+    print(f"Valid Gen CSV: {cfg.valid_gen_path}")
+    print(f"Margin Threshold: {cfg.margin_threshold}")
+    print(f"Eval Ratio: {cfg.eval_ratio}")
+    print(f"Seed: {cfg.seed}")
     print("=" * 80 + "\n")
 
     print("Loading CSV files...")
-    train_gen_df = pd.read_csv(train_gen_path)
-    valid_gen_df = pd.read_csv(valid_gen_path)
+    train_gen_df = pd.read_csv(cfg.train_gen_path)
+    valid_gen_df = pd.read_csv(cfg.valid_gen_path)
     print(f"Train Gen: {len(train_gen_df)} rows")
     print(f"Valid Gen: {len(valid_gen_df)} rows\n")
 
@@ -38,21 +42,21 @@ def main(
     all_pairs = build_dpo_dataset(
         train_gen_df=train_gen_df,
         valid_gen_df=valid_gen_df,
-        margin_threshold=margin_threshold,
+        margin_threshold=cfg.margin_threshold,
     )
 
-    print(f"\nSplitting into train/eval (ratio={eval_ratio})...")
+    print(f"\nSplitting into train/eval (ratio={cfg.eval_ratio})...")
     train_pairs, eval_pairs = train_test_split(
         all_pairs,
-        test_size=eval_ratio,
-        random_state=seed,
+        test_size=cfg.eval_ratio,
+        random_state=cfg.seed,
     )
     print(f"Train pairs: {len(train_pairs)}")
     print(f"Eval pairs: {len(eval_pairs)}\n")
 
     print("Saving JSONL files...")
-    save_jsonl(train_pairs, output_train_path)
-    save_jsonl(eval_pairs, output_eval_path)
+    save_jsonl(train_pairs, cfg.output_train_path)
+    save_jsonl(eval_pairs, cfg.output_eval_path)
 
     print("\n" + "=" * 80)
     print("Done!")
@@ -230,7 +234,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(
+    cfg = DPODatasetConfig(
         train_gen_path=args.train_gen,
         valid_gen_path=args.valid_gen,
         output_train_path=args.output_train,
@@ -239,3 +243,5 @@ if __name__ == "__main__":
         eval_ratio=args.eval_ratio,
         seed=args.seed,
     )
+
+    main(cfg)
