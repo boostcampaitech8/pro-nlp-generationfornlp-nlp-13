@@ -53,6 +53,9 @@ trainer:
 
 data:
   train_path: "./data/train.csv"
+  train_augment_paths:
+    - "./data/train_augment_LSAT_cut.csv"
+    - "./data/train_augment_SAT_4.csv"
   test_path: "./data/test.csv"
   valid_ratio: 0.1
   seed: 42
@@ -92,9 +95,9 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng/final_model"
+  adapter_path: "./models/qwen3_14B_eng_dpo/checkpoint-504/policy"
   test_data_path: "./data/test.csv"
-  output_path: "./submission2.csv"
+  output_path: "./submission4.csv"
   max_new_tokens: 30
   do_sample: false
 
@@ -131,13 +134,13 @@ dpo:
 
     eval_strategy: "steps"
     save_strategy: "steps"
-    logging_steps: 5
-    eval_steps: 20
-    save_steps: 20
+    logging_steps: 10
+    eval_steps: 40
+    save_steps: 40
 
     load_best_model_at_end: true
-    metric_for_best_model: "eval_loss"
-    greater_is_better: false
+    metric_for_best_model: "eval_rewards/accuracies"
+    greater_is_better: true
     save_total_limit: 2
 
     max_length: 2048

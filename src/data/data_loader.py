@@ -13,6 +13,7 @@ from src.data.tokenizer_wrapper import TokenizerWrapper, TokenizerConfig
 @dataclass(frozen=True)
 class DataConfig:
     train_path: Optional[Union[str, Path]] = None
+    train_augment_paths: Optional[list[Union[str, Path]]] = None
     test_path: Optional[Union[str, Path]] = None
     valid_ratio: float = 0.1
     seed: int = 42
@@ -42,7 +43,7 @@ def make_train_valid_dataset(
     tokenize_cfg_gen: TokenizerConfig,
     tokenizer,
 ) -> DatasetDict:
-    
+
     df = load_csv(data_cfg.train_path)
     df = build_dataframe(df)
 
@@ -53,6 +54,16 @@ def make_train_valid_dataset(
             stratify=df["choices_len"],
             random_state=data_cfg.seed,
         )
+
+        if data_cfg.train_augment_paths:
+            aug_dfs = []
+            for aug_path in data_cfg.train_augment_paths:
+                aug_df = load_csv(aug_path)
+                aug_df = build_dataframe(aug_df)
+                aug_dfs.append(aug_df)
+
+            train_df = pd.concat([train_df] + aug_dfs, ignore_index=True)
+
         train_ds = Dataset.from_pandas(train_df, preserve_index=False)
         valid_ds = Dataset.from_pandas(valid_df, preserve_index=False)
     else:
