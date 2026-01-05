@@ -17,11 +17,11 @@ lora:
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./models/qwen3_14B_eng"
+  output_dir: "./models/qwen3_14B_eng_aug2"
   max_seq_length: 2048
   packing: false
 
-  num_train_epochs: 3
+  num_train_epochs: 2
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 4
@@ -30,7 +30,7 @@ trainer:
   lr_scheduler_type: "cosine"
   optim: "paged_adamw_32bit"
   weight_decay: 0.01
-  warmup_ratio: 0.05
+  warmup_ratio: 0.08
   max_grad_norm: 1.0
 
   fp16: true
@@ -54,8 +54,9 @@ trainer:
 data:
   train_path: "./data/train.csv"
   train_augment_paths:
-    - "./data/train_augment_LSAT_cut.csv"
+    - "./data/train_augment_LSAT_cut2.csv"
     - "./data/train_augment_SAT_4.csv"
+    - "./data/train_augment_korea_history.csv"
   test_path: "./data/test.csv"
   valid_ratio: 0.1
   seed: 42
@@ -86,8 +87,8 @@ tokenizer:
 
 wandb:
   enabled: true
-  run_name: "qwen3_14B_eng"
-  project_name: "qwen3-14B-test1"
+  run_name: "qwen3_14B_eng_aug2"
+  project_name: "qwen3-14B-Augment"
   entity: "pro-nlp-generationfornlp-nlp-13"
   dir: "./wandb"
 
@@ -95,9 +96,9 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng_dpo/checkpoint-504/policy"
+  adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
   test_data_path: "./data/test.csv"
-  output_path: "./submission4.csv"
+  output_path: "./submission_aug2.csv"
   max_new_tokens: 30
   do_sample: false
 
@@ -111,10 +112,10 @@ inference:
         5: "v1"
 
 dpo:
-  sft_adapter_path: "./models/qwen3_14B_eng/final_model"
+  sft_adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
 
   trainer:
-    output_dir: "./models/qwen3_14B_eng_dpo"
+    output_dir: "./models/qwen3_14B_eng_aug_dpo"
 
     num_train_epochs: 2
     per_device_train_batch_size: 1
@@ -134,9 +135,9 @@ dpo:
 
     eval_strategy: "steps"
     save_strategy: "steps"
-    logging_steps: 10
-    eval_steps: 40
-    save_steps: 40
+    logging_steps: 20
+    eval_steps: 60
+    save_steps: 60
 
     load_best_model_at_end: true
     metric_for_best_model: "eval_rewards/accuracies"

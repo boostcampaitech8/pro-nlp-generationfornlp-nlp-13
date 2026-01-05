@@ -112,7 +112,7 @@ def process_row(
         messages,
         tokenize=False,
         add_generation_prompt=True,
-        enabenable_thinking=False,
+        enable_thinking=False,
     )
     
     inputs = tokenizer(
