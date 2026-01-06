@@ -98,10 +98,11 @@ inference:
 
   adapter_path: "./models/qwen3_14B_eng_aug2/final_model_from_serverA"
   test_data_path: "./data/test.csv"
-  output_path: "./submission.csv"
-  output_logits_path: "./qwen3_result_logits.csv"
+  output_path: "./submission_qwen_v1.csv"
+  output_logits_path: "./qwen3_probs_v1.csv"
   max_new_tokens: 30
   do_sample: false
+  retry_quantile: 0.25
 
   prompt:
     policy:
@@ -111,6 +112,14 @@ inference:
       user:
         4: "eng"
         5: "v1"
+  retry_prompt:
+    policy:
+      system:
+        4: "retryv1"
+        5: "retryv1"
+      user:
+        4: "retryv1"
+        5: "retryv1"
 
 dpo:
   sft_adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
