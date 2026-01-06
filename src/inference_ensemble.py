@@ -36,6 +36,7 @@ def main(
     
     print(f"Loading test data from {test_data_path}...")
     test_df = load_test_data(test_data_path)
+
     print(f"Loaded {len(test_df)} rows\n")
     
     print(f"Loading tokenizer from {model_cfg.model_name_or_path}...")
@@ -133,7 +134,7 @@ def process_row(
     max_new_tokens: int = 100,
 ) -> Dict:
     
-    k = int(row_dict["choices_len"])
+    
 
     output = builder.build_message(row_dict)
     messages = output["messages"]
@@ -151,7 +152,10 @@ def process_row(
         truncation=True,
         max_length=4096
     ).to(device)
-    
+
+    k = int(row_dict["choices_len"])
+    input_len = inputs["input_ids"].shape[1]
+
     with torch.no_grad():
         output_ids = model.generate(
             **inputs,
@@ -159,9 +163,11 @@ def process_row(
             do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
+            return_dict_in_generate=True,
+            output_scores=True, 
         )
     
-    full_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    full_text = tokenizer.decode(output_ids.sequences[0][input_len:], skip_special_tokens=True)
 
     step_logits = output_ids.scores[-2][0]
     
@@ -210,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="config.yaml",
+        default="config_ax.yaml",
         help="Path to config.yaml"
     )
     parser.add_argument(
