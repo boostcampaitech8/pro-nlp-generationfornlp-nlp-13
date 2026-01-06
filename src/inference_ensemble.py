@@ -216,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="config_ax.yaml",
+        default="config.yaml",
         help="Path to config.yaml"
     )
     parser.add_argument(
