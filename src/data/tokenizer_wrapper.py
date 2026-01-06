@@ -19,7 +19,7 @@ class TokenizerWrapper:
             example["messages"],
             tokenize=False,
             add_generation_prompt=self.cfg.add_generation_prompt,
-            enable_thinking=False,
+            # enable_thinking=False,
         )
 
         return {"text": text}

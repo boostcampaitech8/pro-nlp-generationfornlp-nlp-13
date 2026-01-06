@@ -83,7 +83,8 @@ def build_trainer(
         remove_unused_columns=cfg.remove_unused_columns,
     )
 
-    response_template = "<|im_start|>assistant\n"
+    response_template = "<|im_start|><|assistant|>"
+
     data_collator = DataCollatorForCompletionOnlyLM(
         response_template=response_template,
         tokenizer=tokenizer,

@@ -1,5 +1,5 @@
 model:
-  model_name_or_path: "Qwen/Qwen3-14B"
+  model_name_or_path: "skt/A.X-4.0-Light"
   use_4bit: true
   bnb_4bit_quant_type: "nf4"
   bnb_4bit_use_double_quant: true
@@ -9,28 +9,28 @@ model:
   trust_remote_code: true
 
 lora:
-  r: 8
-  lora_alpha: 16
+  r: 16
+  lora_alpha: 32
   lora_dropout: 0.05
   target_modules: "all-linear"
   bias: "none"
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./models/qwen3_14B_eng_aug2"
+  output_dir: "./models/A.X-4.0-Light"
   max_seq_length: 2048
   packing: false
 
-  num_train_epochs: 2
+  num_train_epochs: 4
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 4
 
-  learning_rate: 0.0001
+  learning_rate: 0.0002
   lr_scheduler_type: "cosine"
   optim: "paged_adamw_32bit"
   weight_decay: 0.01
-  warmup_ratio: 0.08
+  warmup_ratio: 0.05
   max_grad_norm: 1.0
 
   fp16: true
@@ -87,8 +87,8 @@ tokenizer:
 
 wandb:
   enabled: true
-  run_name: "qwen3_14B_eng_aug2"
-  project_name: "qwen3-14B-Augment"
+  run_name: "A.X-4.0-Light-basic"
+  project_name: "A.X-4.0-Light"
   entity: "pro-nlp-generationfornlp-nlp-13"
   dir: "./wandb"
 
@@ -96,10 +96,9 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
+  adapter_path: "./models/A.X-4.0-Light/final_model"
   test_data_path: "./data/test.csv"
-  output_path: "./submission.csv"
-  output_logits_path: "./qwen3_result_logits.csv"
+  output_path: "./submission_ax.csv"
   max_new_tokens: 30
   do_sample: false
 
