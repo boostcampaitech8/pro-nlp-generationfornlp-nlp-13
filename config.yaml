@@ -96,10 +96,12 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng_aug2/final_model_from_serverA"
+  adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
   test_data_path: "./data/test.csv"
   output_path: "./submission_qwen_v1.csv"
   output_logits_path: "./qwen3_probs_v1.csv"
+  output_path: "./submission_qwen.csv"
+
   max_new_tokens: 30
   do_sample: false
   retry_quantile: 0.25
