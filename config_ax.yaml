@@ -40,7 +40,7 @@ trainer:
   save_strategy: "steps"
   logging_steps: 10
   eval_steps: 40
-  save_steps: 40
+  save_steps: 200
 
   save_total_limit: 2
   load_best_model_at_end: true
@@ -99,6 +99,7 @@ inference:
   adapter_path: "./models/A.X-4.0-Light/final_model"
   test_data_path: "./data/test.csv"
   output_path: "./submission_ax.csv"
+  output_logits_path : "./ax_probs.csv"
   max_new_tokens: 30
   do_sample: false
 

@@ -96,7 +96,7 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
+  adapter_path: "./models/qwen3_14B_eng_aug2/final_model_from_serverA"
   test_data_path: "./data/test.csv"
   output_path: "./submission.csv"
   output_logits_path: "./qwen3_result_logits.csv"
