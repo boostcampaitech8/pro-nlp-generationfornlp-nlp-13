@@ -28,7 +28,7 @@
 
 ### 최종 리더보드 (Private)
 
-<img width="1216" alt="image" src="./assets/private.png">
+<img width="1000" alt="image" src="./assets/private.png">
 
 ## 4. 파이프라인
 사진 추가
@@ -66,24 +66,17 @@ src/
 ```
 
 ## 6. Train 및 Inference 실행
+세팅을 직접하고 싶다면 `config.yaml` 를 참고해주세요.
 
 **train**
 
-세팅을 직접하고 싶다면 `config.yaml` 를 참고해주세요.
-
-모델 학습
 
 ```bash
 python -m src.train.py
 ```
 
-
 **inference**
 
-모델의 학습이 완료되면 `inference.py` 를 이용해 odqa 를 진행할 수 있습니다.
-
-- 학습한 모델의 test_dataset에 대한 결과를 제출하기 위해선 추론(`-do_predict`)만 진행하면 됩니다.
-- 학습한 모델이 train_dataset 대해서 ODQA 성능이 어떻게 나오는지 알고 싶다면 평가(`-do_eval`)를 진행하면 됩니다.
 
 ```python
 python -m src.inference
