@@ -33,7 +33,7 @@ EDA를 통해 4/5지선다 문항이 지문 길이와 정답 분포 등에서 �
 <img width="1000" alt="image" src="./assets/private.png">
 
 ## 4. 파이프라인
-사진 추가
+<img width="1000" alt="image" src="./assets/pipeline.png">
 
 ## 5. 디렉토리 구조
 
