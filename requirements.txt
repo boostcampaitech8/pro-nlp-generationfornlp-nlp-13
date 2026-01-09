@@ -1,11 +1,11 @@
 ipykernel==6.29.5
 ipywidgets==8.1.5
 transformers==4.57.3
-trl==0.11.4
+trl==0.13.0
 scikit-learn==1.5.2
 matplotlib==3.9.2
 evaluate==0.4.3
-peft==0.13.2
+peft==0.18.0
 requests==2.32.5
 numpy==1.26.4
 rich==14.2.0
