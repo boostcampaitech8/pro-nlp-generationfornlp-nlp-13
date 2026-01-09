@@ -52,4 +52,6 @@ output.csv
 # png files
 *.png
 
-Yoon
+*.txt
+
+models
