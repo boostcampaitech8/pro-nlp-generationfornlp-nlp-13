@@ -1,5 +1,5 @@
 model:
-  model_name_or_path: "Qwen/Qwen3-8B"
+  model_name_or_path: "Qwen/Qwen3-14B"
   use_4bit: true
   bnb_4bit_quant_type: "nf4"
   bnb_4bit_use_double_quant: true
@@ -17,7 +17,7 @@ lora:
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./models/test"
+  output_dir: "./models/qwen3_14B_eng_aug_all"
   max_seq_length: 2048
   packing: false
 
@@ -26,10 +26,11 @@ trainer:
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 4
 
-  learning_rate: 0.0002
+  learning_rate: 0.0001
+  lr_scheduler_type: "cosine"
   optim: "paged_adamw_32bit"
   weight_decay: 0.01
-  warmup_ratio: 0.05
+  warmup_ratio: 0.08
   max_grad_norm: 1.0
 
   fp16: true
@@ -38,12 +39,12 @@ trainer:
   eval_strategy: "steps"
   save_strategy: "steps"
   logging_steps: 10
-  eval_steps: 20
+  eval_steps: 40
   save_steps: 40
 
   save_total_limit: 2
   load_best_model_at_end: true
-  metric_for_best_model: "eval_accuracy"
+  metric_for_best_model: "eval_macro_f1"
   greater_is_better: true
 
   report_to: "wandb"
@@ -52,6 +53,11 @@ trainer:
 
 data:
   train_path: "./data/train.csv"
+  train_augment_paths:
+    - "./data/train_augment_SAT_4.csv"
+    - "./data/train_augment_korea_history.csv"
+    - "./data/train_augment_logic_exam_real.csv"
+    - "./data/lsat_dataset.csv"
   test_path: "./data/test.csv"
   valid_ratio: 0.1
   seed: 42
@@ -62,10 +68,10 @@ prompt:
   verbose: false
   policy:
     system:
-      4: "v1"
+      4: "expand"
       5: "v1"
     user:
-      4: "v1"
+      4: "eng"
       5: "v1"
 
 tokenizer:
@@ -82,24 +88,94 @@ tokenizer:
 
 wandb:
   enabled: true
-  project_name: "qwen3-pipeline-test1"
+  run_name: "qwen3_14B_eng_aug_all"
+  project_name: "qwen3-14B-Augment"
   entity: "pro-nlp-generationfornlp-nlp-13"
+  dir: "./wandb"
 
 inference:
   model:
     use_gradient_checkpointing: false
-  
-  adapter_path: "./models/test/final_model"
+  adapter_path: "./models/qwen3_14B_eng_aug_all/final_model"
   test_data_path: "./data/test.csv"
-  output_path: "./submission.csv"
-  max_new_tokens: 100
+  output_path: "./submission_qwen_v1.csv"
+  output_logits_path: "./qwen3_probs_v1.csv"
+  output_path: "./submission_qwen.csv"
+  max_new_tokens: 30
   do_sample: false
-  
+  retry_quantile: 0.25
+
   prompt:
     policy:
       system:
-        4: "v1"
+        4: "expand"
         5: "v1"
       user:
-        4: "v1"
+        4: "eng"
         5: "v1"
+  retry_prompt:
+    policy:
+      system:
+        4: "retryv1"
+        5: "retryv1"
+      user:
+        4: "retryv1"
+        5: "retryv1"
+
+  retry_prompt:
+    policy:
+      system:
+        4: "retryv1"
+        5: "retryv1"
+      user:
+        4: "retryv1"
+        5: "retryv1"
+
+dpo:
+  sft_adapter_path: "./models/qwen3_14B_eng_aug_all/final_model"
+
+  trainer:
+    output_dir: "./models/qwen3_14B_eng_aug_all_dpo"
+
+    num_train_epochs: 2
+    per_device_train_batch_size: 1
+    per_device_eval_batch_size: 1
+    gradient_accumulation_steps: 4
+
+    learning_rate: 0.000005
+    lr_scheduler_type: "cosine"
+    warmup_ratio: 0.1
+
+    beta: 0.1
+    label_smoothing: 0.0
+    loss_type: "sigmoid"
+
+    fp16: true
+    bf16: false
+
+    eval_strategy: "steps"
+    save_strategy: "steps"
+    logging_steps: 20
+    eval_steps: 60
+    save_steps: 60
+
+    load_best_model_at_end: true
+    metric_for_best_model: "eval_rewards/accuracies"
+    greater_is_better: true
+    save_total_limit: 2
+
+    max_length: 2048
+    max_prompt_length: 1820
+    max_completion_length: 30
+
+    remove_unused_columns: false
+    report_to: "wandb"
+    seed: 42
+
+  data:
+    train_path: "./data/dpo_train.jsonl"
+    eval_path: "./data/dpo_eval.jsonl"
+    seed: 42
+    csv_dir: "./data/dpo_outputs"
+    margin_threshold: 0.995
+    eval_ratio: 0.1

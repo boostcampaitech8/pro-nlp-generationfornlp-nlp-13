@@ -35,7 +35,9 @@ checkpoint
 *.tar.gz
 
 # Models
+models/
 result/
+*.safetensors
 *.bin
 *.pt
 *.index
@@ -50,5 +52,7 @@ output.csv
 
 # png files
 *.png
+
+*.txt
 
 models
