@@ -62,18 +62,40 @@ class PromptBuilder:
 
         template = self.registry.templates[key]
 
-        if has_plus:
+        # retry용인지 확인 (pred_answer가 있으면 retry)
+        pred_answer = row.get("pred_answer", None)
+        is_retry = pred_answer is not None
+
+        if is_retry:
+            # retry 템플릿 - pred_answer 포함
+            if has_plus:
+                return template.format(
+                    paragraph=paragraph,
+                    question_plus=q_plus,
+                    question=question,
+                    choices=choices_str,
+                    pred_answer=pred_answer,
+                )
             return template.format(
                 paragraph=paragraph,
-                question_plus=q_plus,
+                question=question,
+                choices=choices_str,
+                pred_answer=pred_answer,
+            )
+        else:
+            # 일반 템플릿 - pred_answer 없음
+            if has_plus:
+                return template.format(
+                    paragraph=paragraph,
+                    question_plus=q_plus,
+                    question=question,
+                    choices=choices_str,
+                )
+            return template.format(
+                paragraph=paragraph,
                 question=question,
                 choices=choices_str,
             )
-        return template.format(
-            paragraph=paragraph,
-            question=question,
-            choices=choices_str,
-        )
 
     def _get_assistant_message(self, row):
         return str(row['answer'])

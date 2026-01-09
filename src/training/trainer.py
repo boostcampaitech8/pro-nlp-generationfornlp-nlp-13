@@ -20,6 +20,7 @@ class TrainerConfig:
 
     learning_rate: float = 2e-4
     optim: str = "paged_adamw_32bit"
+    lr_scheduler_type: str = "cosine"
     weight_decay: float = 0.01
     warmup_ratio: float = 0.05
     max_grad_norm: float = 1.0
@@ -59,6 +60,7 @@ def build_trainer(
 
         learning_rate=cfg.learning_rate,
         optim=cfg.optim,
+        lr_scheduler_type=cfg.lr_scheduler_type,
         weight_decay=cfg.weight_decay,
         warmup_ratio=cfg.warmup_ratio,
         max_grad_norm=cfg.max_grad_norm,
@@ -81,7 +83,8 @@ def build_trainer(
         remove_unused_columns=cfg.remove_unused_columns,
     )
 
-    response_template = "<|im_start|>assistant\n"
+    response_template = "<|im_start|><|assistant|>"
+
     data_collator = DataCollatorForCompletionOnlyLM(
         response_template=response_template,
         tokenizer=tokenizer,
