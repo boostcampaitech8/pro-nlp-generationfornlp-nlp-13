@@ -1,5 +1,5 @@
 model:
-  model_name_or_path: "Qwen/Qwen3-14B"
+  model_name_or_path: "skt/A.X-4.0-Light"
   use_4bit: true
   bnb_4bit_quant_type: "nf4"
   bnb_4bit_use_double_quant: true
@@ -9,28 +9,28 @@ model:
   trust_remote_code: true
 
 lora:
-  r: 8
-  lora_alpha: 16
+  r: 16
+  lora_alpha: 32
   lora_dropout: 0.05
   target_modules: "all-linear"
   bias: "none"
   task_type: "CAUSAL_LM"
 
 trainer:
-  output_dir: "./models/qwen3_14B_eng_aug_all"
+  output_dir: "./models/A.X-4.0-Light"
   max_seq_length: 2048
   packing: false
 
-  num_train_epochs: 2
+  num_train_epochs: 4
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 4
 
-  learning_rate: 0.0001
+  learning_rate: 0.0002
   lr_scheduler_type: "cosine"
   optim: "paged_adamw_32bit"
   weight_decay: 0.01
-  warmup_ratio: 0.08
+  warmup_ratio: 0.05
   max_grad_norm: 1.0
 
   fp16: true
@@ -40,7 +40,7 @@ trainer:
   save_strategy: "steps"
   logging_steps: 10
   eval_steps: 40
-  save_steps: 40
+  save_steps: 200
 
   save_total_limit: 2
   load_best_model_at_end: true
@@ -54,10 +54,9 @@ trainer:
 data:
   train_path: "./data/train.csv"
   train_augment_paths:
+    - "./data/train_augment_LSAT_cut2.csv"
     - "./data/train_augment_SAT_4.csv"
     - "./data/train_augment_korea_history.csv"
-    - "./data/train_augment_logic_exam_real.csv"
-    - "./data/lsat_dataset.csv"
   test_path: "./data/test.csv"
   valid_ratio: 0.1
   seed: 42
@@ -88,8 +87,8 @@ tokenizer:
 
 wandb:
   enabled: true
-  run_name: "qwen3_14B_eng_aug_all"
-  project_name: "qwen3-14B-Augment"
+  run_name: "A.X-4.0-Light-basic"
+  project_name: "A.X-4.0-Light"
   entity: "pro-nlp-generationfornlp-nlp-13"
   dir: "./wandb"
 
@@ -97,13 +96,10 @@ inference:
   model:
     use_gradient_checkpointing: false
 
-  adapter_path: "./models/qwen3_14B_eng_aug_all/final_model"
+  adapter_path: "./models/A.X-4.0-Light/final_model"
   test_data_path: "./data/test.csv"
-  output_path: "./submission_qwen_v1.csv"
-  output_logits_path: "./qwen3_probs_v1.csv"
-  output_path: "./submission_qwen.csv"
-
-
+  output_path: "./submission_ax_v1.csv"
+  output_logits_path : "./ax_probs_v1.csv"
   max_new_tokens: 30
   do_sample: false
   retry_quantile: 0.25
@@ -125,20 +121,11 @@ inference:
         4: "retryv1"
         5: "retryv1"
 
-  retry_prompt:
-    policy:
-      system:
-        4: "retryv1"
-        5: "retryv1"
-      user:
-        4: "retryv1"
-        5: "retryv1"
-
 dpo:
-  sft_adapter_path: "./models/qwen3_14B_eng_aug_all/final_model"
+  sft_adapter_path: "./models/qwen3_14B_eng_aug2/final_model"
 
   trainer:
-    output_dir: "./models/qwen3_14B_eng_aug_all_dpo"
+    output_dir: "./models/qwen3_14B_eng_aug_dpo"
 
     num_train_epochs: 2
     per_device_train_batch_size: 1

@@ -68,6 +68,7 @@ def load_model(model_cfg: ModelConfig, lora_cfg: LoRAConfig):
             target_modules=lora_cfg.target_modules,
             bias=lora_cfg.bias,
             task_type=lora_cfg.task_type,
+            use_dora=True
         )
 
         model = get_peft_model(model, peft_config)
