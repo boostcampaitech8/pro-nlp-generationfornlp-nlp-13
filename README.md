@@ -85,4 +85,4 @@ python -m src.inference
 ```
 
 ## 7. Wrap-Up Report
-프로젝트 전반의 시행착오와 솔루션 및 회고는 [MRC_NLP_13.pdf](MRC_NLP_13.pdf)을 통해 확인할 수 있습니다.
+프로젝트 전반의 시행착오와 솔루션 및 회고는 [Generation For_NLP_13.pdf](./assets/generationfornlp-nlp-13.pdf)을 통해 확인할 수 있습니다.
