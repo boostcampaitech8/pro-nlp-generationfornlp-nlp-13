@@ -28,7 +28,7 @@ EDA를 통해 4/5지선다 문항이 지문 길이와 정답 분포 등에서 �
 
 ## 3. 결과
 
-### 최종 리더보드 (Private)
+### 최종 리더보드 (Public)
 
 <img width="1000" alt="image" src="./assets/private.png">
 
