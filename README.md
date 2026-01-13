@@ -41,15 +41,20 @@ EDA를 통해 4/5지선다 문항이 지문 길이와 정답 분포 등에서 �
 .
 src/
 ├─ train.py
+├─ dpo_train.py
 ├─ inference.py
 │
 ├─ training/
 │   ├─ trainer.py
+│   ├─ dpo_trainer.py
 │   └─ model_loader.py
 │
 ├─ data/
 │   ├─ preprocessor.py
 │   ├─ data_loader.py
+│   ├─ dpo_data_loader.py
+│   ├─ dpo_builder.py
+│   ├─ dpo_dataset.py
 │   └─ tokenizer_wrapper.py
 │
 ├─ prompt/
@@ -63,18 +68,31 @@ src/
 │   ├─ metrics.py
 │ 	├─ wandb.py
 │   └─ seed.py
-│    
-└─ notebooks/
+│
+configs/
+│   ├─ config_qwen.yaml 
+│   └─ config_ax.yaml
+│
+notebooks/
+
+
 ```
 
 ## 6. Train 및 Inference 실행
-세팅을 직접하고 싶다면 `config.yaml` 를 참고해주세요.
+세팅을 직접하고 싶다면 `config_qwen.yaml`, `config_ax.yaml` 를 참고해주세요.
 
 **train**
 
 
 ```bash
-python -m src.train.py
+# 기본 사용법
+python -m src.train --config {CONFIG_PATH}
+
+# Qwen 모델 학습 예시
+python -m src.train --config configs/config_qwen.yaml
+
+# Ax 모델 학습 예시
+python -m src.train --config configs/config_ax.yaml
 ```
 
 **inference**
