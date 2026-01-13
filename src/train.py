@@ -8,7 +8,7 @@ from peft import TaskType
 from transformers import AutoTokenizer
 
 from src.training.model_loader import ModelConfig, LoRAConfig, load_model
-from src.training.trainer import TrainerConfig, build_trainer
+from src.training.trainer import TrainerConfig, TokenFormatConfig, build_trainer
 from src.data.data_loader import DataConfig, make_train_valid_dataset
 from src.prompt.prompt_builder import PromptConfig
 from src.data.tokenizer_wrapper import TokenizerConfig
@@ -20,6 +20,7 @@ def main(
     model_cfg: ModelConfig,
     lora_cfg: LoRAConfig,
     trainer_cfg: TrainerConfig,
+    token_cfg: TokenFormatConfig,
     data_cfg: DataConfig,
     prompt_cfg: PromptConfig,
     tokenize_cfg_train: TokenizerConfig,
@@ -71,7 +72,8 @@ def main(
     model = load_model(model_cfg, lora_cfg)
     
     trainer = build_trainer(
-        cfg=trainer_cfg,
+        trainer_cfg=trainer_cfg,
+        token_cfg=token_cfg,
         model=model,
         tokenizer=tokenizer,
         train_dataset=datasets["train"],
@@ -116,6 +118,7 @@ def create_configs(cfg_dict: Dict[str, Any]):
     model_cfg = ModelConfig(**model_dict)
     lora_cfg = LoRAConfig(**lora_dict)
     trainer_cfg = TrainerConfig(**cfg_dict["trainer"])
+    token_cfg = TokenFormatConfig(**cfg_dict.get("token_format", {})) # 새로 추가
     data_cfg = DataConfig(**cfg_dict["data"])
     prompt_cfg = PromptConfig(**cfg_dict["prompt"])
     
@@ -126,6 +129,7 @@ def create_configs(cfg_dict: Dict[str, Any]):
         model_cfg,
         lora_cfg,
         trainer_cfg,
+        token_cfg,
         data_cfg,
         prompt_cfg,
         tokenize_cfg_train,
@@ -139,11 +143,11 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train Qwen3-8B with LoRA")
+    parser = argparse.ArgumentParser(description="Train Qwen3-14B or A.X-8B with LoRA")
     parser.add_argument(
         "--config",
         type=str,
-        default="./config.yaml",
+        default="./configs/config_qwen.yaml",
         help="Path to config YAML file"
     )
     args = parser.parse_args()
@@ -153,6 +157,7 @@ if __name__ == "__main__":
         model_cfg,
         lora_cfg,
         trainer_cfg,
+        token_cfg,
         data_cfg,
         prompt_cfg,
         tokenize_cfg_train,
@@ -163,6 +168,7 @@ if __name__ == "__main__":
         model_cfg=model_cfg,
         lora_cfg=lora_cfg,
         trainer_cfg=trainer_cfg,
+        token_cfg=token_cfg,
         data_cfg=data_cfg,
         prompt_cfg=prompt_cfg,
         tokenize_cfg_train=tokenize_cfg_train,
