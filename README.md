@@ -101,7 +101,14 @@ python -m src.train --config configs/config_ax.yaml
 
 
 ```python
+# 기본 사용법
 python -m src.inference
+
+# 재추론 로직 예시
+python -m src.inference_2step
+
+# 앙상블 추론 예시
+python -m src.inference_ensemble
 ```
 
 ## 7. Wrap-Up Report
