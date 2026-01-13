@@ -20,7 +20,7 @@ class Metrics:
     def _make_digit_ids(self) -> None:
         for i in range(5):
             digit = str(i + 1)
-            self.digit_ids.append(self.toknizer.vocab[digit])
+            self.digit_ids.append(self.tokenizer.vocab[digit])
 
     def compute_metrics(
         self, 
@@ -113,7 +113,7 @@ class Metrics:
         # 만약 labels가 전부 -100인 샘플이 있으면(비정상) 그냥 seq_len로 처리
         real_len = torch.where(has_any, real_len, torch.full_like(real_len, seq_len))
 
-        pos = (real_len - self.pos_from_tail).clamp(min=0, max=seq_len-1) # (B,)
+        pos = (real_len - self.logit_pos_from_tail).clamp(min=0, max=seq_len-1) # (B,)
 
         # (B, V)로 해당 위치의 logits만 gather
         logits_t = torch.as_tensor(logits)                           # (B, L, V)
