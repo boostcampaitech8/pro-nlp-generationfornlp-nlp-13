@@ -1,160 +1,115 @@
-# README
-
-# 여행친구 (여친)
+# 수능형 문제 풀이 모델 생성
 
 ## 1. 프로젝트 개요
-
 ### 1.1 프로젝트 주제
-
- 본 프로젝트는 딱딱한 비서형 LLM이 아니라, 카톡하듯 여행 계획을 완성해주는 친구형 여행 에이전트를 구현하였다. 단발성 체인이 아닌 State 를 유지하는 에이전트 구조를 이용하여 구축하는 것을 목표로 하였다.
+ 본 프로젝트는 수능형 국어·사회 지문 기반 객관식 문제를 해결하는 대회 과제로, 입력(지문/문항/선택지)에 대해 정답 선택지 번호를 예측하는 모델을 구축하였다. GPT·Claude 등 대형 모델 대비 상대적으로 작은 규모의 모델로도 경쟁력 있는 성능을 달성하는 것을 목표로 하였다.
 
 ### 1.2 주요 전략 및 방법론
-
- 병렬적인 Tool동작, 정확성을 높이는 순환구조를 위해 LangGraph를 도입하였고, 에이전트의 친근한 답변을 위해 Qwen3-4B-Instruct 모델에 AI-Hub의 한국어 SNS 멀티턴 대화 데이터로  SFT와 DPO를 QLoRA 학습하여 챗봇Tool로 구현하였다
+EDA를 통해 4/5지선다 문항이 지문 길이와 정답 분포 등에서 서로 다른 특성을 갖는 것을 기반으로 유형 분리 전략을 적용하였다. 이후 외부 데이터 증강, 프롬프트 최적화, Qwen3-14B와 A.X-4.0 Light의 soft voting 앙상블, 그리고 마진 기반 저신뢰도 문항에 대한 Critic 재추론을 결합하여 최종 추론 파이프라인을 구성하였다.
 
 ### 1.3 데이터셋
+수능 국어 및 사회 탐구 영역의 복합적인 추론 능력을 평가하기 위한 데이터셋 활용
 
-페르소나를 입히기 위한 대화 데이터셋과 RAG로 최신 여행 정보를 응답에 반영하기 위한 데이터셋 활용
 
-- AI Hub 한국어 SNS 멀티턴 대화 데이터셋(여행/문화 카테고리) - 2인 대화, 총 38,334개 대화 추출[미정]
-- 카카오맵 크롤링
-    - 최신 정보 반영을 위해 2025년 기준 최신 리뷰 데이터 3개 크롤링
-    - Selenium + BeautifulSoup 기반 동적 크롤링
-- ‘비짓부산’ 홈페이지의 《블루리본 2025》, 《택슐랭 2025》 등 가이드북 16개
-    - PyMuPDF 와 LLM을 이용해 데이터 정제 및 청크 구성
+* **수능형 문항**: 수능의 국어, 사회 영역(윤리, 정치, 사회)과 비슷한 문제
+* **KMMLU** (Korean History), **MMMLU** (HighSchool 데이터 중 역사, 경제, 정치, 지리, 심리)
+* **KLUE MRC**(경제, 교육산업, 국제, 부동산, 사회, 생활, 책마을)
 
-## **2. 팀원 소개 및 역할**
 
+
+## 2. 팀원 소개 및 역할
 | 이름 | 프로필 | 역할 |
 | :---: | :---: | --- |
-| **김영현**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/Kimyoung-hyun) | <img src="./assets/kim.jpg" width="100"> | RAG 구축, LangGraph 구현 |
-| **윤준상**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/JunandSang) | <img src="./assets/yun.jpg" width="100"> | EDA, 프론트엔드 구현, Agent Tool 설계 |
-| **장세현**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/sucruba70) | <img src="./assets/jang.jpg" width="100"> | SFT 데이터 전처리,  LangGraph 구현, Agent Tool 설계 |
-| **주현민**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/zoosumzoosum) | <img src="./assets/zoo.jpg" width="100"> | SFT데이터 수집/EDA , 페르소나 학습, 발표자료 제작 및 발표 |
-| **한지석**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/jis-archive) | <img src="./assets/han.jpg" width="100"> | DPO 학습 데이터 구축, DPO 학습, RAG 평가 파이프라인 설계, 모델 서빙 |
+| **김영현**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/Kimyoung-hyun) | <img src="./assets/kim.jpg" width="100"> | 데이터 증강, 프롬프트 엔지니어링 |
+| **윤준상**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/JunandSang) | <img src="./assets/yun.jpg" width="100"> | 데이터 분석, 데이터 증강, 프롬프트 엔지니어링 |
+| **장세현**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/sucruba70) | <img src="./assets/jang.jpg" width="100"> | 데이터 분석, 전체 파이프라인 설계 및 구현, DPO 실험, 추론 로직 구현 |
+| **주현민**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/zoosumzoosum) | <img src="./assets/zoo.jpg" width="100"> | 데이터 증강, 프롬프트 엔지니어링, EDA |
+| **한지석**<br>[<img src="./assets/github-mark.png" width="25">](https://github.com/jis-archive) | <img src="./assets/han.jpg" width="100"> | 디렉토리 구조 설계, 앙상블 구현, 추론 성능 실험 |
 
+## 3. 결과
 
-## 3. 파이프라인
+### 최종 리더보드 (Public)
 
-<img width="1000" alt="image" src="./assets/image.png">
+<img width="1000" alt="image" src="./assets/private.png">
 
-<img width="1000" alt="image" src="./assets/image 2.png">
+## 4. 파이프라인
+<img width="1000" alt="image" src="./assets/pipeline.png">
 
-## 4. 디렉토리 구조
+## 5. 디렉토리 구조
 
 ```bash
-├─ server.py
-│
+.
 src/
-├─ AGENT/
-│   ├─ __init__.py
-│   ├─ graph.py
-│   ├─ states.py
-│   ├─ prompt
-│   └─ tool
+├─ train.py
+├─ dpo_train.py
+├─ inference.py
+├─ inference_2step.py
+├─ inference_ensemble.py
 │
-├─ RAG/
-│   ├─ __init__.py
+├─ training/
+│   ├─ trainer.py
+│   ├─ dpo_trainer.py
+│   └─ model_loader.py
+│
+├─ data/
+│   ├─ preprocessor.py
 │   ├─ data_loader.py
-│   ├─ hybrid_retriever.py
-│   ├─ rag.py
-│   ├─ rag_builder.py
-│   └─ metric
-│       └─ prompt.py
+│   ├─ dpo_data_loader.py
+│   ├─ dpo_builder.py
+│   ├─ dpo_dataset.py
+│   └─ tokenizer_wrapper.py
 │
-├─ common/
-│   ├─ set_seed.py
-│   └─ wandb.py
+├─ prompt/
+│   ├─ prompt_builder.py
+│   ├─ prompt_registry.py 
+│   └─ templates
+│      ├─ system
+│      └─ user
 │
-├─ dpo/
-│   ├─ evaluate_chatbot.py
-│   ├─ generate_dpo_dataset.py
-│   ├─ train_dpo.py
-│   ├─ data
-│   │   ├─ custom_distilabel.py
-│   │   └─ dpo_data_loader.py
-│   └─ training
-│       ├─ dpo_trainer.py
-│       └─ model_loader.py
-│
-├─ sft/
-│   ├─ train.py
-│   ├─ data
-│   │   ├─ collator.py
-│   │   ├─ data_loader.py
-│   │   └─ preprocessor.py
-│   └─ training
-│       ├─ model_loader.py
-│       └─ trainer.py
-│
-frontend/
-├─ package.json
-├─ package-lock.json
-├─ public/
-│   ├─ favicon.ico
-│   ├─ index.html
-│   ├─ logo192.png
-│   ├─ logo512.png
-│   ├─ manifest.json
-│   └─ robots.txt
-│
-├─ src/
-│   ├─ App.css
-│   ├─ App.js
-│   ├─ App.test.js
-│   ├─ background.jpg
-│   ├─ bot_profile.png
-│   ├─ index.css
-│   ├─ index.js
-│   ├─ logo.svg
-│   ├─ reportWebVitals.js
-│   └─ setupTests.js
-│
-├─ scripts/
-│   ├─ generate_dataset
-│   ├─ rag
-│   ├─ serving
-│   └─ train
+├─ utils/
+│   ├─ metrics.py
+│ 	├─ wandb.py
+│   └─ seed.py
 │
 configs/
-│   ├─ dpo_config.yaml
-│   ├─ rag.yaml
-│   ├─ rag_metric.yaml
-│   └─ sft_config.yaml
+│   ├─ config_qwen.yaml 
+│   └─ config_ax.yaml
 │
 notebooks/
+
+
 ```
 
-## 5. Train 및 Inference 실행
-
-세팅을 직접하려면 `dpo_config.yaml`, `rag.yaml`, `rag_metric.yaml`, `sft_config.yaml` 를 참고해주세요.
+## 6. Train 및 Inference 실행
+세팅을 직접하고 싶다면 `config_qwen.yaml`, `config_ax.yaml` 를 참고해주세요.
 
 **train**
 
+
 ```bash
-# 파일 내 로직코드 실행
-python -m scripts.{폴더명} {파일명} 
-
 # 기본 사용법
-python -m scripts.train --config {CONFIG_PATH}
+python -m src.train --config {CONFIG_PATH}
 
-# 모델 SFT 학습 예시
-bash src/sft/train.py
-# 모델 DPO 학습 예시
-bash src/dpo/train_dpo.py
+# Qwen 모델 학습 예시
+python -m src.train --config configs/config_qwen.yaml
+
+# Ax 모델 학습 예시
+python -m src.train --config configs/config_ax.yaml
 ```
 
 **inference**
 
+
 ```python
 # 기본 사용법
-python -m server.py
+python -m src.inference
 
-cd frontend
-npm start
+# 재추론 로직 예시
+python -m src.inference_2step
 
+# 앙상블 추론 예시
+python -m src.inference_ensemble
 ```
 
-## 6. Wrap-Up Report
-
-프로젝트 전반의 시행착오와 솔루션 및 회고는 [FinalProject_NLP_13.pdf](./assets/finalproject-nlp-13.pdf) 을 통해 확인할 수 있습니다.
+## 7. Wrap-Up Report
+프로젝트 전반의 시행착오와 솔루션 및 회고는 [Generation_For_NLP_13.pdf](./assets/generationfornlp-nlp-13.pdf)을 통해 확인할 수 있습니다.
